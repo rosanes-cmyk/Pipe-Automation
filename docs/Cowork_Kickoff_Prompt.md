@@ -5,29 +5,41 @@ open and logged in**. Attach `Cowork_Update_Runbook.md` to the session (or paste
 its contents) so the agent can follow it in full — the prompt inlines the
 essential rules so it works either way.
 
+This prompt is the **fully automated / unattended** version: once pasted, the
+agent works the entire New bucket on its own with no approval pauses. It stops
+only if it can't save at all, loses the REI login, or finishes the bucket.
+
 A checkpoint-sheet template is in §2 below; create it (Google Sheet or CSV)
 before you start.
 
 ---
 
-## 1. The kickoff prompt (copy everything in this box)
+## 1. The kickoff prompt — FULLY AUTOMATED / UNATTENDED (copy everything in this box)
+
+This version runs the entire New bucket end to end **without pausing for
+approval**. The only checks that remain are automated ones (they need no human):
+a one-lead self-test, reload-verify on every save, checkpoint/resume, and
+holding the leads that can't be decided safely.
 
 > **Role.** You are running the Pipeline Status Cleanup for Twin Home Buyer in
 > REI BlackBook, following the attached `Cowork_Update_Runbook.md` and SOP v2.
-> Work carefully and reversibly. You are driving the REI web UI directly.
+> Run **unattended, end to end** — do NOT stop to ask for approval between
+> batches. Work reversibly and log everything.
 >
 > **Golden rule.** Only ever change one status field or add a note. Never merge,
 > delete, or move data between records. Everything you do must be reversible.
 >
-> **Preflight (do this first, then pause and tell me what you see):**
-> 1. Confirm you can open the Property Pipeline and the "New" / "Add New
->    Properties" bucket, and tell me roughly how many leads are in it.
-> 2. Confirm you can open a property, open its **attached contact**, read the
->    contact's activity/notes, change **Market Status**, save, and reload.
-> 3. Open the checkpoint sheet I gave you. If it has rows, we are RESUMING —
->    read the last `property_id` and continue from the next unprocessed New lead.
+> **Automated self-test (no human needed — do this once at the start):**
+> 1. Open the Property Pipeline → the "New" / "Add New Properties" bucket.
+> 2. Open the checkpoint sheet. If it has rows, RESUME: continue from the first
+>    New lead not already logged. Never re-process a logged lead.
+> 3. On the **first lead you would set to "Follow up"**, set it, save, reload,
+>    and confirm it persisted. If it sticks, continue automatically. **If it
+>    does NOT persist after 3 tries, STOP the whole run and report** — the save
+>    mechanism is broken and running on would waste the batch.
 >
-> **Then process the New bucket in batches of 25.** For each lead:
+> **Then process EVERY New lead, continuously, until the bucket is empty.** For
+> each lead:
 > 1. Open the record; open the **attached CONTACT** (not the property Notes tab
 >    — real activity lives on the contact).
 > 2. Read the contact's calls/texts/emails/comps/offers and dated notes.
@@ -40,8 +52,7 @@ before you start.
 >    - No attached contact and no activity → **leave New**.
 >    - Contact attached but no activity → **leave New**.
 >    - Note says signed contract / accepted offer → **HOLD** (Under Contract):
->      do NOT set a status; add a note (the exact status value isn't confirmed
->      yet); record as `held`.
+>      do NOT set a status; add a note; record as `held`.
 >    - Note says deal closed/funded, or dead/no-further-action → **HOLD**
 >      (Closed): do NOT set a status; add a note; record as `held`.
 >    - A dead/closed note AND a later re-inquiry/re-engagement → **conflict** →
@@ -52,24 +63,25 @@ before you start.
 >    handler fires (selecting the dropdown alone silently reverts). Then
 >    **reload the record and confirm** Market Status still reads "Follow up".
 >    Retry up to 3 times. If it still won't stick, record `error` and move on.
-> 5. **Do NOT touch the State field** (leave it exactly as-is). If you spot a
->    duplicate, add a note on BOTH records naming the twin — never merge/delete.
+> 5. **Do NOT touch the State field.** If you spot a duplicate, add a note on
+>    BOTH records naming the twin — never merge/delete.
 > 6. **Log every finished lead** to the checkpoint sheet immediately:
 >    `property_id, address, outcome, target_stage, reason, timestamp`
 >    (outcome = verified | held | flagged | left_new | error).
 >
-> **Checkpointing & drops:** append a row the moment each lead is done. After
-> every 25 leads, post a summary (counts by outcome + last property_id) and
-> PAUSE for my go-ahead. If the connection drops, reconnect, re-open the
-> checkpoint sheet, re-verify only the single in-flight lead, then continue —
-> never restart and never re-process a logged lead.
+> **Run continuously.** Every 25 leads, append a one-line progress note to the
+> checkpoint sheet (counts + last property_id) but **keep going without waiting**.
+> If the connection drops, reconnect, re-open the checkpoint sheet, re-verify
+> only the single in-flight lead, then continue automatically. Never restart,
+> never re-process a logged lead.
 >
 > **Guardrails — never:** set the State field; merge/delete a duplicate; guess an
 > Under Contract/Closed status value; decide from a tag; trust a save without a
 > reload-verify; re-process a logged lead.
 >
-> **Start now with just the FIRST 10 leads**, then stop and show me the 10 rows
-> so I can spot-check before you continue with full batches of 25.
+> **Only stop for these (otherwise never pause):** (a) the first-lead self-test
+> fails; (b) you lose the REI session and cannot log back in; (c) you hit the end
+> of the New bucket. On (c), post the full end-of-run report (§7 of the runbook).
 
 ---
 
@@ -88,18 +100,25 @@ columns, header row first:
 
 ---
 
-## 3. How you (the human) drive it
+## 3. What "fully automated" means here (and what it doesn't)
 
-1. Do the preflight — confirm the agent can see/click REI, then let it run the
-   first 10.
-2. **Spot-check those 10** against REI (did the "Follow up" ones actually stick?
-   are the holds/flags sensible?).
-3. If good, tell it to continue in batches of 25, approving each batch.
-4. Keep the checkpoint sheet open; if anything drops, just tell the agent to
-   resume from the sheet.
-5. At the end, ask for the end-of-run report (§7 of the runbook) for the Cherry
-   report.
+Once you paste the prompt, the run is **unattended** — the agent processes the
+whole New bucket on its own, no approvals, and resumes itself after a drop. Two
+things still require a human, and can't be removed:
 
-**When to stop and ask Jonathan:** anything that would require merging records,
-a status value that isn't "Follow up", or a lead you can't confidently classify.
-Hold/flag it and keep going — don't guess.
+1. **You launch it.** It can't start itself — you open the Cowork session, log
+   into REI, create the checkpoint sheet, and paste the prompt. After that it's
+   hands-off.
+2. **The REI login must stay alive.** If REI logs the session out and can't get
+   back in, the agent stops and reports (it won't silently fail).
+
+Everything else is automatic: decisions, "Follow up" saves, reload-verify,
+retries, checkpointing, resume-after-drop, and the hold/flag rules.
+
+**Still safe even unattended:** the agent only sets one value ("Follow up") or
+adds notes; it holds (never guesses) Under Contract/Closed; it never touches the
+State field or merges/deletes. So an unattended run can't do anything
+irreversible — worst case is an extra note or a status you can flip back.
+
+At the end (bucket empty) it posts the end-of-run report (§7 of the runbook) for
+the Cherry report.
