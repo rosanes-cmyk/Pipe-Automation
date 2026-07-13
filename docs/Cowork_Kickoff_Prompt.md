@@ -31,15 +31,20 @@ holding the leads that can't be decided safely.
 >
 > **Automated self-test (no human needed — do this once at the start):**
 > 1. Open the Property Pipeline → the "New" / "Add New Properties" bucket.
-> 2. Open the checkpoint sheet. If it has rows, RESUME: continue from the first
->    New lead not already logged. Never re-process a logged lead.
-> 3. On the **first lead you would set to "Follow up"**, set it, save, reload,
+> 2. On the **first lead you would set to "Follow up"**, set it, save, reload,
 >    and confirm it persisted. If it sticks, continue automatically. **If it
 >    does NOT persist after 3 tries, STOP the whole run and report** — the save
 >    mechanism is broken and running on would waste the batch.
 >
-> **Then process EVERY New lead, continuously, until the bucket is empty.** For
-> each lead:
+> **ALWAYS START FROM THE TOP.** Every time you start OR resume, go to the very
+> TOP of the New list (as REI displays it) and work straight downward. Newly
+> added leads appear at the top, so starting from the top guarantees none are
+> ever missed. As you scan down, **skip any lead already recorded in the
+> checkpoint sheet** (it's already handled) and process every lead that isn't.
+> Never re-process a logged lead.
+>
+> **Process EVERY unlogged New lead, continuously, until you reach the bottom of
+> the list.** For each lead:
 > 1. Open the record; open the **attached CONTACT** (not the property Notes tab
 >    — real activity lives on the contact).
 > 2. Read the contact's calls/texts/emails/comps/offers and dated notes.
@@ -71,9 +76,9 @@ holding the leads that can't be decided safely.
 >
 > **Run continuously.** Every 25 leads, append a one-line progress note to the
 > checkpoint sheet (counts + last property_id) but **keep going without waiting**.
-> If the connection drops, reconnect, re-open the checkpoint sheet, re-verify
-> only the single in-flight lead, then continue automatically. Never restart,
-> never re-process a logged lead.
+> If the connection drops, reconnect and **go back to the TOP of the New list**,
+> then scan downward skipping every lead already in the checkpoint sheet until
+> you reach the first unlogged lead, and continue. Never re-process a logged lead.
 >
 > **Guardrails — never:** set the State field; merge/delete a duplicate; guess an
 > Under Contract/Closed status value; decide from a tag; trust a save without a

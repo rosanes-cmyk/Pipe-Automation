@@ -54,6 +54,9 @@ class Runner:
 
     # -- public API --------------------------------------------------------- #
     def run(self, limit: Optional[int] = None) -> RunStats:
+        # Always iterate the New bucket from the top and skip leads already in
+        # the state store. New leads land at the top, so starting from the top
+        # every run guarantees they're picked up; the skip keeps it idempotent.
         stats = RunStats()
         for prop in self.client.iter_new_leads(self.settings.page_size):
             if limit is not None and stats.processed >= limit:

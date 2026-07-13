@@ -20,11 +20,13 @@
 
 1. Confirm you are logged into REI BlackBook and can open the **Property
    Pipeline**, the **"Add New Properties" / New** bucket.
-2. Open the **checkpoint log** (see §4). If it already has rows, this is a
-   **resume** — read the last `property_id` recorded and continue from the next
-   unprocessed New lead. Never re-process a lead already in the log.
-3. Announce the plan: "Processing New bucket in batches of 25; checkpointing
-   after each; verifying every save."
+2. **Always start from the TOP of the New list** (as REI displays it) and work
+   downward — every start and every resume. Newly added leads appear at the top,
+   so starting from the top guarantees none are missed. Open the **checkpoint
+   log** (see §4); as you scan down, **skip any lead already logged** and process
+   every lead that isn't. Never re-process a logged lead.
+3. Announce the plan: "Starting from the top of the New bucket; skipping
+   already-logged leads; checkpointing as I go; verifying every save."
 
 ---
 
@@ -110,24 +112,28 @@ Rules:
   the source of truth for "what's done".
 - **After every 25 leads**, post a one-line batch summary (counts by outcome)
   and note the last `property_id`.
-- **On resume** (new session, or after a drop): open the log, find the last
-  `property_id`, and continue from the next New lead not already in the log.
-  A lead already in the log is **never** re-processed.
+- **On resume** (new session, or after a drop): **go back to the TOP of the New
+  list** and scan downward, skipping every lead already in the log, until you
+  reach the first unlogged lead — then continue from there. Always start from the
+  top; a lead already in the log is **never** re-processed.
 
 This guarantees a dropped connection loses at most the single in-flight lead,
-which the next session re-checks.
+which the next pass re-checks, and that leads newly added at the top are always
+picked up.
 
 ---
 
 ## 5. If the connection drops mid-run
 
 1. Reconnect / reload the REI extension and re-open the Pipeline.
-2. Open the checkpoint log and read the last recorded `property_id`.
-3. **Re-verify the in-flight lead** (the one after the last logged row): open it
+2. **Go back to the TOP of the New list** and scan downward, skipping every lead
+   already in the checkpoint log.
+3. **Re-verify the in-flight lead** (the first unlogged lead you reach): open it
    fresh and check whether the last intended change actually saved.
    - If it saved → log it and continue.
    - If not → redo it per §2, then continue.
-4. Resume the batch. Do not start over.
+4. Continue downward from there. Always restart the scan from the top, but never
+   re-process a logged lead.
 
 ---
 
