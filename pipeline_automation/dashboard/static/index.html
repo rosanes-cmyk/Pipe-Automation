@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pipeline Status Cleanup — Dashboard</title>
+  <style>
+    :root {
+      --bg: #0f1216; --panel: #171c22; --panel-2: #1e252d; --text: #e8edf2;
+      --muted: #9aa7b4; --border: #2a323b;
+      --new: #6b7785; --evaluating: #3b82f6; --uc: #a855f7; --closed: #22c55e;
+      --held: #f59e0b; --flag: #ef4444; --accent: #38bdf8;
+    }
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg: #f5f7fa; --panel: #ffffff; --panel-2: #f0f3f7; --text: #121820;
+        --muted: #5b6673; --border: #dde3ea;
+      }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font: 15px/1.5 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: var(--bg); color: var(--text); }
+    header { padding: 20px 24px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+    header h1 { font-size: 18px; margin: 0; }
+    .pill { font-size: 12px; padding: 2px 10px; border-radius: 999px;
+      border: 1px solid var(--border); color: var(--muted); }
+    .pill.live { color: #052e16; background: var(--closed); border-color: transparent; }
+    .pill.dry { color: #442c02; background: var(--held); border-color: transparent; }
+    main { max-width: 1100px; margin: 0 auto; padding: 24px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 14px; margin-bottom: 24px; }
+    .tile { background: var(--panel); border: 1px solid var(--border);
+      border-radius: 12px; padding: 16px; }
+    .tile .label { color: var(--muted); font-size: 12px; text-transform: uppercase;
+      letter-spacing: .04em; }
+    .tile .value { font-size: 30px; font-weight: 650; margin-top: 6px; }
+    .tile .sub { color: var(--muted); font-size: 12px; margin-top: 4px; }
+    .panel { background: var(--panel); border: 1px solid var(--border);
+      border-radius: 12px; padding: 20px; margin-bottom: 24px; }
+    .panel h2 { font-size: 14px; margin: 0 0 16px; color: var(--muted);
+      text-transform: uppercase; letter-spacing: .04em; }
+    .progress-track { height: 14px; background: var(--panel-2); border-radius: 999px;
+      overflow: hidden; border: 1px solid var(--border); }
+    .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--evaluating));
+      width: 0; transition: width .4s ease; }
+    .progress-meta { display: flex; justify-content: space-between; color: var(--muted);
+      font-size: 13px; margin-top: 8px; }
+    .bar-row { display: grid; grid-template-columns: 130px 1fr 56px; align-items: center;
+      gap: 12px; margin-bottom: 10px; }
+    .bar-row .name { font-size: 13px; }
+    .bar { height: 22px; border-radius: 6px; min-width: 2px; transition: width .4s ease; }
+    .bar-row .n { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border);
+      vertical-align: top; }
+    th { color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase; }
+    .tag { font-size: 11px; padding: 2px 8px; border-radius: 6px; font-weight: 600; white-space: nowrap; }
+    .tag.verified { background: rgba(34,197,94,.15); color: var(--closed); }
+    .tag.held { background: rgba(245,158,11,.15); color: var(--held); }
+    .tag.flagged { background: rgba(239,68,68,.15); color: var(--flag); }
+    .tag.left_new { background: rgba(107,119,133,.2); color: var(--muted); }
+    .tag.error { background: rgba(239,68,68,.25); color: var(--flag); }
+    .foot { color: var(--muted); font-size: 12px; text-align: center; padding: 10px; }
+    .err { color: var(--flag); }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Pipeline Status Cleanup</h1>
+    <span class="pill" id="source">source: …</span>
+    <span class="pill" id="mode">…</span>
+    <span class="pill" id="updated" style="margin-left:auto">updating…</span>
+  </header>
+
+  <main>
+    <div class="grid" id="tiles"></div>
+
+    <div class="panel">
+      <h2>Cleanup progress (New backlog)</h2>
+      <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+      <div class="progress-meta">
+        <span id="progressText">–</span>
+        <span id="progressPct">0%</span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Pipeline by stage (live from REI)</h2>
+      <div id="stages"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Recent decisions</h2>
+      <table>
+        <thead><tr><th>Property</th><th>Outcome</th><th>Stage</th><th>Reason</th></tr></thead>
+        <tbody id="recent"></tbody>
+      </table>
+    </div>
+
+    <div class="foot">Auto-refreshes every 5s · flags &amp; status changes are reversible</div>
+  </main>
+
+  <script>
+    const STAGE_COLORS = { "New": "var(--new)", "Evaluating": "var(--evaluating)",
+      "Under Contract": "var(--uc)", "Closed": "var(--closed)" };
+    const OUTCOME_LABELS = { verified: "Verified → Evaluating", held: "Held (unconfirmed)",
+      flagged: "Manual-review flags", left_new: "Left New", error: "Errors" };
+
+    async function refresh() {
+      try {
+        const [s, r] = await Promise.all([
+          fetch("/api/stats").then(x => x.json()),
+          fetch("/api/recent?limit=25").then(x => x.json()),
+        ]);
+        render(s, r.items);
+        document.getElementById("updated").textContent =
+          "updated " + new Date().toLocaleTimeString();
+      } catch (e) {
+        document.getElementById("updated").innerHTML =
+          '<span class="err">connection error — retrying</span>';
+      }
+    }
+
+    function render(s, items) {
+      document.getElementById("source").textContent = "source: " + s.data_source;
+      const mode = document.getElementById("mode");
+      mode.textContent = s.dry_run ? "DRY-RUN" : "LIVE";
+      mode.className = "pill " + (s.dry_run ? "dry" : "live");
+
+      // Tiles
+      const o = s.outcomes;
+      const tiles = [
+        { label: "Processed", value: o.total, sub: "this run-state" },
+        { label: "Verified", value: o.verified, sub: "→ Evaluating, reload-verified" },
+        { label: "Held", value: o.held, sub: "unconfirmed mapping" },
+        { label: "Flagged", value: o.flagged, sub: "manual review" },
+        { label: "Remaining New", value: s.progress.remaining_new, sub: "still to process" },
+      ];
+      document.getElementById("tiles").innerHTML = tiles.map(t =>
+        `<div class="tile"><div class="label">${t.label}</div>
+         <div class="value">${t.value.toLocaleString()}</div>
+         <div class="sub">${t.sub}</div></div>`).join("");
+
+      // Progress
+      document.getElementById("progressFill").style.width = s.progress.pct + "%";
+      document.getElementById("progressPct").textContent = s.progress.pct + "%";
+      document.getElementById("progressText").textContent =
+        `${s.progress.processed.toLocaleString()} of ${s.progress.baseline.toLocaleString()} processed`;
+
+      // Stage bars
+      const counts = s.stage_counts;
+      const max = Math.max(1, ...Object.values(counts));
+      document.getElementById("stages").innerHTML = Object.entries(counts).map(([name, n]) =>
+        `<div class="bar-row">
+           <span class="name">${name}</span>
+           <div class="bar" style="width:${Math.max(2, 100 * n / max)}%;background:${STAGE_COLORS[name] || 'var(--muted)'}"></div>
+           <span class="n">${n.toLocaleString()}</span>
+         </div>`).join("");
+
+      // Recent
+      document.getElementById("recent").innerHTML = items.length
+        ? items.map(it =>
+            `<tr><td>${it.property_id}</td>
+             <td><span class="tag ${it.outcome}">${OUTCOME_LABELS[it.outcome] || it.outcome}</span></td>
+             <td>${it.target_stage}</td>
+             <td>${(it.reason || "").replace(/</g,"&lt;")}</td></tr>`).join("")
+        : `<tr><td colspan="4" style="color:var(--muted)">No decisions recorded yet — run the cleanup.</td></tr>`;
+    }
+
+    refresh();
+    setInterval(refresh, 5000);
+  </script>
+</body>
+</html>
