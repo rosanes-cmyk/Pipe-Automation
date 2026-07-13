@@ -14,6 +14,42 @@ before you start.
 
 ---
 
+## 0. ONE-LEAD TEST (do this FIRST, before any full run)
+
+Run the whole flow on a single, reversible lead to confirm it works against real
+REI. Paste this into a Cowork session with REI open and logged in:
+
+> **One-lead test.** You are testing the Pipeline Status Cleanup on exactly ONE
+> lead in REI BlackBook before any full run. Do one lead, then STOP.
+> 1. Open the Property Pipeline → the "New" bucket.
+> 2. Starting from the top, find the **first lead that has activity on its
+>    attached contact** (a call/text/email/comps/offer) — we want one that should
+>    become Evaluating, so the test actually exercises a status change. If you
+>    can't find one in the first ~10, stop and tell me.
+> 3. Open that lead; open the **attached CONTACT** (not the property Notes tab);
+>    read its activity and notes.
+> 4. Set **Market Status = "Follow up"**. Click out / Save so the save handler
+>    fires (selecting the dropdown alone silently reverts).
+> 5. **Reload the record** and confirm Market Status still reads "Follow up" and
+>    the lead now shows under Evaluating. Retry up to 3 times if it reverts.
+> 6. Do **NOT** touch the State field. Do **NOT** merge, delete, or change
+>    anything else.
+> 7. **Report back:** property id + address · what the contact showed · your
+>    decision + why · exactly what you changed · and the reload-verify result
+>    (did "Follow up" persist? did it move to Evaluating?).
+> 8. **STOP after this one lead.** Do not process any others.
+>
+> This change is fully reversible — after you confirm, I can switch the status
+> back or you can leave it.
+
+**How to read the result:**
+- ✅ Working → it reports "Follow up" persisted after reload and the lead is now
+  in Evaluating. You're clear to run §1 for real.
+- ❌ Not working → it reports the value reverted after reload (the save handler
+  didn't fire). Do NOT run the full job; tell me and we adjust the save step.
+
+---
+
 ## 1. The kickoff prompt — FULLY AUTOMATED / UNATTENDED (copy everything in this box)
 
 This version runs the entire New bucket end to end **without pausing for
