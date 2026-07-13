@@ -48,6 +48,25 @@ REI. Paste this into a Cowork session with REI open and logged in:
 - ❌ Not working → it reports the value reverted after reload (the save handler
   didn't fire). Do NOT run the full job; tell me and we adjust the save step.
 
+### 0a. Revert the one-lead test (optional — undo the test change)
+
+Per SOP v2, every change is reversible: a status change is a single-field edit,
+and a flag is a note you can delete. To put the test lead back exactly as it was:
+
+> **Revert the one-lead test.** On the single lead you just changed (property id
+> ___ / address ___), undo the test:
+> 1. Open the record. Set **Market Status back to its original value** — for a
+>    lead that was "New" with no Market Status, clear it back to blank/none so
+>    the lead returns to the **New** bucket.
+> 2. If you added any note during the test, **delete that note.**
+> 3. **Reload** and confirm the lead is back in New with the Market Status blank
+>    and no leftover test note.
+> 4. Report what you reverted and the reload-verify result. Do NOT change any
+>    other lead.
+
+(Fill in the id/address the test reported. If you'd rather keep the test lead as
+Evaluating — it's a correct classification — you can skip this entirely.)
+
 ---
 
 ## 1. The kickoff prompt — FULLY AUTOMATED / UNATTENDED (copy everything in this box)
