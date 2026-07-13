@@ -13,6 +13,8 @@ Clean up the ~2,442-lead "Add New Properties" pipeline in REI BlackBook: set eac
 | [`Pipeline_Status_Cleanup_SOP_v2.md`](./Pipeline_Status_Cleanup_SOP_v2.md) | The current standard operating procedure. v2 bakes in every fix from the July 11 test run. **Start here.** |
 | [`Pipeline_Status_Cleanup_Test_Run_Handoff.md`](./Pipeline_Status_Cleanup_Test_Run_Handoff.md) | Handoff report from the July 11, 2026 manual proof-of-concept test run (~45 leads). Records what worked, what broke, and the decisions/next actions for Jonathan. |
 | [`docs/automation_flow.md`](./docs/automation_flow.md) | The full automation flow — architecture, per-lead flow, reliability design, and how to run it. |
+| [`docs/SOP_Automation_Operations.md`](./docs/SOP_Automation_Operations.md) | Operator runbook for the API-driven tool (setup, dry-run, dashboard, live run, reporting). |
+| [`docs/Cowork_Update_Runbook.md`](./docs/Cowork_Update_Runbook.md) | Cowork batch runbook — how Claude updates REI via the browser (no API), with checkpoint/resume and auto-verify. Same decision rules as the tool. |
 
 ## Automation & dashboard
 
