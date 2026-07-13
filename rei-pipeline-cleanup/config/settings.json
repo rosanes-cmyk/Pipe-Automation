@@ -18,9 +18,9 @@
   },
 
   "urls": {
-    "$comment": "Confirm in Phase 1 by copying the real URLs from the address bar.",
-    "login": "https://app.reiblackbook.com/",
-    "pipeline": "TODO_PIPELINE_URL"
+    "$comment": "Confirmed from the live app (Phase 1).",
+    "login": "https://my.reiblackbook.com/",
+    "pipeline": "https://my.reiblackbook.com/properties/inbox"
   },
 
   "marketStatus": {
