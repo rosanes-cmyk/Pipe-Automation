@@ -1,0 +1,15 @@
+{
+  "name": "rei-pipeline-cleanup",
+  "version": "0.1.0",
+  "description": "REI BlackBook Property Pipeline status cleanup automation (Node.js + Playwright)",
+  "type": "commonjs",
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "audit": "node app.js --audit",
+    "live": "node app.js --live",
+    "test": "node --test \"tests/*.test.js\""
+  },
+  "dependencies": {
+    "playwright": "^1.44.0"
+  }
+}

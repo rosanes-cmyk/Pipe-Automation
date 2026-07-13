@@ -1,0 +1,57 @@
+{
+  "$comment": "Runtime configuration. Safety defaults: audit-only, no writes, one lead.",
+
+  "mode": {
+    "AUDIT_MODE": true,
+    "LIVE_MODE": false,
+    "MAX_LEADS_PER_RUN": 1
+  },
+
+  "browser": {
+    "userDataDir": "./.chrome-profile",
+    "headless": false,
+    "slowMoMs": 150,
+    "channel": "chrome",
+    "viewport": { "width": 1440, "height": 900 },
+    "navigationTimeoutMs": 45000,
+    "actionTimeoutMs": 15000
+  },
+
+  "urls": {
+    "$comment": "Confirm in Phase 1 by copying the real URLs from the address bar.",
+    "login": "https://app.reiblackbook.com/",
+    "pipeline": "TODO_PIPELINE_URL"
+  },
+
+  "marketStatus": {
+    "$comment": "REI 'Market Status' value that maps to each pipeline stage. Evaluating is confirmed ('Follow up'). The others are OPEN ITEMS (SOP v2 §8) — leave null and the engine HOLDS + flags those leads instead of guessing a value.",
+    "Evaluating": "Follow up",
+    "UnderContract": null,
+    "ClosedWon": null,
+    "ClosedDead": null
+  },
+
+  "address": {
+    "tidyStreetText": false,
+    "$comment_tidy": "false = flag-only (recommended for unattended runs): capture ZIPs from notes, flag dupes/malformed, but do not rewrite street text. true = also tidy obvious suffix/casing."
+  },
+
+  "run": {
+    "checkpointEvery": 25,
+    "maxVerifyRetries": 1,
+    "screenshotsBefore": true,
+    "screenshotsAfter": true
+  },
+
+  "paths": {
+    "reportsCsv": "./reports/pipeline-results.csv",
+    "reportsJson": "./reports/pipeline-results.json",
+    "progress": "./data/progress.json",
+    "manualReview": "./data/manual-review.json",
+    "duplicates": "./data/duplicates.json",
+    "screenshotsBefore": "./screenshots/before",
+    "screenshotsAfter": "./screenshots/after",
+    "screenshotsErrors": "./screenshots/errors",
+    "log": "./logs/automation.log"
+  }
+}

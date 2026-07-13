@@ -1,0 +1,9 @@
+node_modules/
+.chrome-profile/
+reports/*.csv
+reports/*.json
+screenshots/**/*.png
+logs/*.log
+data/progress.json
+data/manual-review.json
+data/duplicates.json
