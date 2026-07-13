@@ -20,13 +20,14 @@
 
 1. Confirm you are logged into REI BlackBook and can open the **Property
    Pipeline**, the **"Add New Properties" / New** bucket.
-2. **Always start from the TOP of the New list** (as REI displays it) and work
-   downward — every start and every resume. Newly added leads appear at the top,
-   so starting from the top guarantees none are missed. Open the **checkpoint
-   log** (see §4); as you scan down, **skip any lead already logged** and process
-   every lead that isn't. Never re-process a logged lead.
-3. Announce the plan: "Starting from the top of the New bucket; skipping
-   already-logged leads; checkpointing as I go; verifying every save."
+2. **A fresh run starts from the TOP of the New list** (as REI displays it) and
+   works downward. Newly added leads appear at the top, so each fresh run (e.g.
+   tomorrow's) starts from the top to catch them. Open the **checkpoint log**
+   (see §4); as you scan down, **skip any lead already logged** and process every
+   lead that isn't. **A resume is different** — see §5: continue in place, don't
+   restart from the top.
+3. Announce the plan: "Fresh run — starting from the top of the New bucket;
+   skipping already-logged leads; checkpointing as I go; verifying every save."
 
 ---
 
@@ -112,27 +113,29 @@ Rules:
   the source of truth for "what's done".
 - **After every 25 leads**, post a one-line batch summary (counts by outcome)
   and note the last `property_id`.
-- **On resume** (new session, or after a drop): **go back to the TOP of the New
-  list** and scan downward, skipping every lead already in the log, until you
-  reach the first unlogged lead — then continue from there. Always start from the
-  top; a lead already in the log is **never** re-processed.
+- **On a fresh run** (new day / new kickoff): start from the TOP and scan down,
+  skipping every lead already in the log. This picks up leads newly added at the
+  top.
+- **On a resume** (a run that dropped before finishing): **just resume in place**
+  — continue from the lead right after the last one logged; do NOT go back to the
+  top. Re-verify that one in-flight lead first.
+- A lead already in the log is **never** re-processed, either way.
 
 This guarantees a dropped connection loses at most the single in-flight lead,
-which the next pass re-checks, and that leads newly added at the top are always
-picked up.
+and that leads newly added at the top are picked up on the next fresh run.
 
 ---
 
 ## 5. If the connection drops mid-run
 
 1. Reconnect / reload the REI extension and re-open the Pipeline.
-2. **Go back to the TOP of the New list** and scan downward, skipping every lead
-   already in the checkpoint log.
-3. **Re-verify the in-flight lead** (the first unlogged lead you reach): open it
-   fresh and check whether the last intended change actually saved.
+2. Open the checkpoint log and find the **last logged `property_id`**.
+3. **Re-verify that in-flight lead:** open it fresh and check whether the last
+   intended change actually saved.
    - If it saved → log it and continue.
    - If not → redo it per §2, then continue.
-4. Continue downward from there. Always restart the scan from the top, but never
+4. **Resume in place** — continue downward from the next lead. Do NOT restart
+   from the top on a resume (only a fresh run starts from the top). Never
    re-process a logged lead.
 
 ---

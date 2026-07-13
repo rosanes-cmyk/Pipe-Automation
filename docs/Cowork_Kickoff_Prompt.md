@@ -36,12 +36,13 @@ holding the leads that can't be decided safely.
 >    does NOT persist after 3 tries, STOP the whole run and report** — the save
 >    mechanism is broken and running on would waste the batch.
 >
-> **ALWAYS START FROM THE TOP.** Every time you start OR resume, go to the very
+> **A FRESH RUN STARTS FROM THE TOP.** This is a fresh run, so go to the very
 > TOP of the New list (as REI displays it) and work straight downward. Newly
-> added leads appear at the top, so starting from the top guarantees none are
-> ever missed. As you scan down, **skip any lead already recorded in the
-> checkpoint sheet** (it's already handled) and process every lead that isn't.
-> Never re-process a logged lead.
+> added leads appear at the top, so a fresh run always starts from the top to
+> catch them. As you scan down, **skip any lead already recorded in the
+> checkpoint sheet** (already handled) and process every lead that isn't. Never
+> re-process a logged lead. (Running again tomorrow = another fresh run = start
+> from the top again.)
 >
 > **Process EVERY unlogged New lead, continuously, until you reach the bottom of
 > the list.** For each lead:
@@ -76,9 +77,10 @@ holding the leads that can't be decided safely.
 >
 > **Run continuously.** Every 25 leads, append a one-line progress note to the
 > checkpoint sheet (counts + last property_id) but **keep going without waiting**.
-> If the connection drops, reconnect and **go back to the TOP of the New list**,
-> then scan downward skipping every lead already in the checkpoint sheet until
-> you reach the first unlogged lead, and continue. Never re-process a logged lead.
+> **If the connection drops mid-run, just RESUME** — reconnect and continue
+> downward from the lead right after the last one in the checkpoint sheet
+> (re-verify that one first). Do NOT go back to the top on a resume; only a fresh
+> run starts from the top. Never re-process a logged lead.
 >
 > **Guardrails — never:** set the State field; merge/delete a duplicate; guess an
 > Under Contract/Closed status value; decide from a tag; trust a save without a
@@ -89,6 +91,25 @@ holding the leads that can't be decided safely.
 > of the New bucket. On (c), post the full end-of-run report (§7 of the runbook).
 
 ---
+
+## 1b. Resume prompt (use ONLY if a run was interrupted before finishing)
+
+If a run stopped partway (session closed, long outage) and you're picking it back
+up **the same run** — not a new day — paste this instead. It resumes in place
+rather than restarting from the top.
+
+> **Resume the Pipeline Status Cleanup** for Twin Home Buyer, following
+> `Cowork_Update_Runbook.md`. This is a RESUME, not a fresh run — **do not start
+> from the top.** Open the checkpoint sheet, find the last logged `property_id`,
+> re-open that lead and re-verify its change actually saved (redo if not), then
+> continue downward from the next lead. Skip anything already logged; never
+> re-process a logged lead. All other rules (decide on activity not tags, set
+> "Follow up" + reload-verify, HOLD Under Contract/Closed, don't touch State,
+> flag duplicates, log every lead) are unchanged. Run unattended to the bottom of
+> the list, then post the end-of-run report.
+
+**Rule of thumb:** new day / new run → §1 (start from top). Continuing a run that
+didn't finish → §1b (resume in place).
 
 ## 2. Checkpoint sheet template
 
