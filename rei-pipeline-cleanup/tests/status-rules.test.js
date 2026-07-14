@@ -60,6 +60,40 @@ test('dead note + re-inquiry -> conflict manual review', () => {
   assert.match(d.reason, /conflict/i);
 });
 
+test('lead stage Follow Up -> Evaluating even without dated activity', () => {
+  const d = classify({ hasContact: true, tags: [], notes: [], activities: [], leadStage: '2 Follow Up', disposition: 'Unresponsive' }, MS);
+  assert.equal(d.action, 'set_status');
+  assert.equal(d.recommendedStatus, 'Evaluating');
+  assert.equal(d.marketStatusValue, 'Follow up');
+});
+
+test('lead stage Interested -> Evaluating', () => {
+  const d = classify({ hasContact: true, notes: [], activities: [], leadStage: 'Interested' }, MS);
+  assert.equal(d.recommendedStatus, 'Evaluating');
+});
+
+test('lead stage Dead -> Closed (hold when unmapped)', () => {
+  const d = classify({ hasContact: true, notes: [], activities: [], leadStage: 'Dead' }, MS);
+  assert.equal(d.recommendedStatus, 'Closed');
+  assert.equal(d.action, 'hold');
+});
+
+test('disposition Wrong Number -> Closed', () => {
+  const d = classify({ hasContact: true, notes: [], activities: [], leadStage: '', disposition: 'Wrong Number' }, MS);
+  assert.equal(d.recommendedStatus, 'Closed');
+});
+
+test('lead stage Under Contract -> Under Contract (hold when unmapped)', () => {
+  const d = classify({ hasContact: true, notes: [], activities: [], leadStage: 'Under Contract' }, MS);
+  assert.equal(d.recommendedStatus, 'Under Contract');
+  assert.equal(d.action, 'hold');
+});
+
+test('dead lead stage + re-inquiry note -> manual review', () => {
+  const d = classify({ hasContact: true, notes: ['May 2026 re-inquiry received'], activities: [], leadStage: 'Dead' }, MS);
+  assert.equal(d.action, 'manual_review');
+});
+
 test('latest activity is surfaced', () => {
   const d = classify({ hasContact: true, tags: [], notes: [], activities: [
     { type: 'call', timestamp: '2026-07-01T10:00:00', summary: 'old' },

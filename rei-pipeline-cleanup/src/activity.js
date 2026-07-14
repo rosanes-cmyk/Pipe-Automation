@@ -56,6 +56,21 @@ function parseTags(text) {
   return m[1].split(/[,|]/).map((t) => t.trim()).filter(Boolean).slice(0, 20);
 }
 
+/**
+ * Read a labeled field where the label is on one line and the value on the next
+ * non-empty line (REI contact-record layout), e.g. "Lead Stage\n2 Follow Up".
+ */
+function parseField(text, label) {
+  const lines = String(text || '').split(/\r?\n/).map((s) => s.trim());
+  const re = new RegExp('^' + label + '$', 'i');
+  for (let i = 0; i < lines.length; i++) {
+    if (re.test(lines[i])) {
+      for (let j = i + 1; j < lines.length; j++) if (lines[j]) return lines[j];
+    }
+  }
+  return '';
+}
+
 class Activity {
   constructor(page, settings, log) {
     this.page = page;
@@ -84,9 +99,15 @@ class Activity {
     }
     const { activities, notes } = parseActivityText(text);
     const tags = parseTags(text);
-    if (this.log) this.log(`[contact ${contactId}] ${activities.length} dated activity line(s), ${notes.length} signal note(s), ${tags.length} tag(s).`);
-    return { activities, notes, tags, confidence: activities.length || notes.length ? 'contact-record' : 'empty' };
+    const leadStage = parseField(text, 'Lead Stage');
+    const disposition = parseField(text, 'Call Disposition');
+    const category = parseField(text, 'Category');
+    if (this.log) this.log(`[contact ${contactId}] stage="${leadStage}" disp="${disposition}" ${activities.length} dated-act ${notes.length} note(s).`);
+    return {
+      activities, notes, tags, leadStage, disposition, category,
+      confidence: activities.length || notes.length || leadStage ? 'contact-record' : 'empty',
+    };
   }
 }
 
-module.exports = { Activity, inferType, parseActivityText, parseTags };
+module.exports = { Activity, inferType, parseActivityText, parseTags, parseField };

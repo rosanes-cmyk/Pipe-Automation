@@ -72,6 +72,18 @@ function holdOrSet(stage, value, reason) {
   };
 }
 
+// Map the contact's Lead Stage / Call Disposition text to a pipeline stage.
+// This is the primary signal (it IS how the rep categorized the lead).
+function stageFromSignals(leadStage, disposition) {
+  const s = `${leadStage || ''} ${disposition || ''}`.toLowerCase();
+  if (!s.trim()) return null;
+  if (/under\s*contract|accepted\s*offer|contract\s*(sent|signed|pending)|in\s*escrow|closing/.test(s)) return 'UnderContract';
+  if (/\bclosed\s*won\b|\bsold\b|\bfunded\b|deal\s*closed/.test(s)) return 'ClosedWon';
+  if (/\bdead\b|\blost\b|not\s*interested|wrong\s*number|do\s*not\s*(mail|call|contact)|\bdnc\b|unqualified|invalid|declined|remove\s*from\s*list|trash|bad\s*(number|lead)/.test(s)) return 'ClosedDead';
+  if (/follow\s*up|interested|nurtur|made?\s*an?\s*offer|\boffer\b|appointment|property\s*visit|\bwarm\b|\bhot\b|contacted|negotiat|callback|call\s*back|left\s*(a\s*)?(voicemail|message|vm)|answered|spoke|attempt|working|in\s*progress/.test(s)) return 'Evaluating';
+  return null;
+}
+
 function classify(input, marketStatus) {
   const ms = marketStatus || {};
   const tags = input.tags || [];
@@ -81,9 +93,33 @@ function classify(input, marketStatus) {
   const base = { latestActivity: latest };
 
   // 1. Untouched -> stays New.
-  if (!input.hasContact && activities.length === 0 && (input.notes || []).length === 0) {
+  if (!input.hasContact && activities.length === 0 && (input.notes || []).length === 0 && !input.leadStage) {
     return { ...base, recommendedStatus: 'New', action: 'leave_new', marketStatusValue: null,
       reason: 'No attached contact and no activity — correct as New.', note: null, manualReviewReason: null };
+  }
+
+  // 1b. Lead Stage / Call Disposition is the primary signal (how the rep
+  //     categorized the lead). Use it before falling back to notes/activity.
+  const signalStage = stageFromSignals(input.leadStage, input.disposition);
+  const stageLabel = input.leadStage ? `Lead Stage "${input.leadStage}"` : `disposition "${input.disposition}"`;
+  if (signalStage === 'Evaluating') {
+    return { ...base, recommendedStatus: 'Evaluating', action: 'set_status', marketStatusValue: ms.Evaluating || null,
+      reason: `${stageLabel} indicates an active/worked lead.`, note: null, manualReviewReason: null };
+  }
+  if (signalStage === 'UnderContract') {
+    return { ...base, ...holdOrSet('Under Contract', ms.UnderContract, `${stageLabel} indicates under contract.`) };
+  }
+  if (signalStage === 'ClosedWon') {
+    return { ...base, ...holdOrSet('Closed', ms.ClosedWon, `${stageLabel} indicates closed (won).`) };
+  }
+  if (signalStage === 'ClosedDead') {
+    // A dead stage that conflicts with a re-engagement note -> manual review.
+    if (matchesAny(notes, REENGAGE)) {
+      return { ...base, recommendedStatus: 'New', action: 'manual_review', marketStatusValue: null,
+        reason: `${stageLabel} indicates dead, but a re-engagement note conflicts.`,
+        note: 'Dead lead stage vs. a later re-inquiry — left as-is for manual review.', manualReviewReason: 'Dead vs. re-inquiry conflict.' };
+    }
+    return { ...base, ...holdOrSet('Closed', ms.ClosedDead, `${stageLabel} indicates dead.`) };
   }
 
   // 2. Conflict: a dead/closed note co-occurs with a re-engagement signal -> manual review.

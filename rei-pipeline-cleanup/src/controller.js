@@ -135,7 +135,10 @@ class Controller {
 
     // 5. Decision.
     const decision = classify(
-      { hasContact, tags: collected.tags, notes: collected.notes, activities: collected.activities },
+      {
+        hasContact, tags: collected.tags, notes: collected.notes, activities: collected.activities,
+        leadStage: collected.leadStage, disposition: collected.disposition,
+      },
       this.settings.marketStatus
     );
 
