@@ -40,8 +40,18 @@
   },
 
   "address": {
-    "tidyStreetText": false,
-    "$comment_tidy": "false = flag-only (recommended for unattended runs): capture ZIPs from notes, flag dupes/malformed, but do not rewrite street text. true = also tidy obvious suffix/casing."
+    "tidyStreetText": true,
+    "$comment_tidy": "true = tidy obvious street suffix/casing + city casing and capture the ZIP (SOP §6.5). The State field is NEVER touched. false = flag-only.",
+    "writeToRei": false,
+    "$comment_write": "false = compute + report the cleaned address only (safe default). true = also write the tidied Street/City/ZIP back into REI (Edit Property Details), reload-verified. Keep false until the edit-form selectors are confirmed live with 'node diagnose.js address <id>' and set in src/address-writer.js — writing a wrong address is the one non-reversible action, so it stays gated until verified.",
+    "editFormSelectors": {
+      "$comment": "Filled in from the live diagnostic. Empty = writer flags instead of writing.",
+      "editButton": "",
+      "street": "",
+      "city": "",
+      "zip": "",
+      "save": ""
+    }
   },
 
   "run": {

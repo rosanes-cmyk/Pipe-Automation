@@ -47,6 +47,49 @@ function tidyStreet(street) {
 }
 
 /**
+ * Split a combined address string into { street, city, state, zip } so the
+ * street can be tidied and the ZIP captured while the State is left untouched.
+ *
+ * Handles the common REI shapes:
+ *   "123 Main St, Los Angeles, CA 90001"
+ *   "123 Main St, Los Angeles, CA"
+ *   "123 Main Street, Oakland, California 94601"
+ *   "123 Main St, Los Angeles, CA, USA"   (geocoded — flagged elsewhere)
+ *   "123 Main St"                          (street only)
+ *
+ * Never guesses missing parts; unknown pieces come back blank.
+ */
+function parseAddress(full) {
+  const out = { street: '', city: '', state: '', zip: '' };
+  if (!full) return out;
+
+  let s = String(full).trim().replace(/\s+/g, ' ');
+  // Drop a trailing country token so it doesn't get mistaken for city/state.
+  s = s.replace(/,\s*(USA|United States)\s*$/i, '').trim();
+
+  // Pull the ZIP off the end if present (5 or 5-4).
+  const zipM = s.match(/\b(\d{5})(?:-\d{4})?\b\s*$/);
+  if (zipM) { out.zip = zipM[1]; s = s.slice(0, zipM.index).trim().replace(/,\s*$/, ''); }
+
+  const parts = s.split(',').map((p) => p.trim()).filter(Boolean);
+
+  // Last token might be a state (2-letter code or full "California").
+  const stateTok = parts.length ? parts[parts.length - 1] : '';
+  if (/^[A-Za-z]{2}$/.test(stateTok) || /^california$/i.test(stateTok)) {
+    out.state = stateTok;
+    parts.pop();
+  }
+
+  if (parts.length >= 2) {
+    out.city = parts[parts.length - 1];
+    out.street = parts.slice(0, -1).join(', ');
+  } else if (parts.length === 1) {
+    out.street = parts[0];
+  }
+  return out;
+}
+
+/**
  * @param {{street, city, state, zip}} addr
  * @param {{tidyStreetText:boolean}} opts
  */
@@ -71,11 +114,18 @@ function reviewAddress(addr, opts = {}) {
     out.cleaned.state = 'CA'; // keep existing CA (normalize case only)
   }
 
-  // Street tidy — only when explicitly enabled.
+  // Street + city tidy — only when explicitly enabled.
   if (opts.tidyStreetText && addr.street) {
     const tidied = tidyStreet(addr.street);
     if (tidied !== addr.street) {
       out.cleaned.street = tidied;
+      out.addressCorrected = true;
+    }
+  }
+  if (opts.tidyStreetText && addr.city) {
+    const tidiedCity = addr.city.trim().replace(/\s+/g, ' ').split(' ').map(titleCaseWord).join(' ');
+    if (tidiedCity !== addr.city) {
+      out.cleaned.city = tidiedCity;
       out.addressCorrected = true;
     }
   }
@@ -88,4 +138,4 @@ function reviewAddress(addr, opts = {}) {
   return out;
 }
 
-module.exports = { reviewAddress, tidyStreet };
+module.exports = { reviewAddress, tidyStreet, parseAddress };

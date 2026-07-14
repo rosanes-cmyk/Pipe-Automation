@@ -80,6 +80,76 @@ const log = (m) => console.log(m);
       return;
     }
 
+    // ADDRESS mode: node diagnose.js address <id> -> map the Edit Property
+    // Details form so the Street/City/ZIP inputs + Save control can be wired
+    // into config/settings.json -> address.editFormSelectors. Changes nothing.
+    if (argId === 'address') {
+      const id = process.argv[3];
+      if (!id) { log('Usage: node diagnose.js address <propertyId>'); return; }
+      const u = abs((settings.urls.addressEdit || '/properties/details/{id}/propertyDetails').replace('{id}', id));
+      await page.goto(u, { waitUntil: 'domcontentloaded' }).catch(() => {});
+      await page.waitForTimeout(2000);
+      log(`\n== EDIT PROPERTY DETAILS: ${u} ==`);
+
+      // Some layouts hide the fields behind an "Edit" button — surface candidates.
+      const editBtns = await page.evaluate(() => {
+        const out = [];
+        document.querySelectorAll('a,button,[role=button],.btn,[onclick]').forEach((e) => {
+          const t = (e.innerText || e.value || '').trim().replace(/\s+/g, ' ').slice(0, 30);
+          if (/edit/i.test(t)) out.push(e.tagName + ' [' + (e.className || '').toString().slice(0, 40) + '] "' + t + '"');
+        });
+        return out.slice(0, 15);
+      }).catch(() => []);
+      log('\n== "Edit" BUTTON CANDIDATES ==\n' + (editBtns.join('\n') || '(none)'));
+
+      const dump = async (label) => {
+        const fields = await page.evaluate(() => {
+          const rows = [];
+          document.querySelectorAll('input,select,textarea').forEach((e) => {
+            const id = e.id || '';
+            const name = e.getAttribute('name') || '';
+            const ph = e.getAttribute('placeholder') || '';
+            let lbl = '';
+            if (id) { const l = document.querySelector('label[for="' + id + '"]'); if (l) lbl = l.innerText.trim(); }
+            const vis = !!(e.offsetParent) && e.type !== 'hidden';
+            const val = (e.value || '').slice(0, 40);
+            rows.push(`  [${vis ? 'V' : '-'}] ${e.tagName.toLowerCase()}${e.type ? ':' + e.type : ''}  id="${id}" name="${name}" label="${lbl}" ph="${ph}" val="${val}"`);
+          });
+          return rows;
+        }).catch(() => []);
+        log(`\n== FORM FIELDS ${label} (${fields.length}) ==`);
+        // Prioritise address-relevant fields at the top.
+        const rel = fields.filter((f) => /address|street|city|zip|postal|state/i.test(f));
+        log((rel.length ? rel.join('\n') + '\n  --- other ---\n' : '') + fields.slice(0, 60).join('\n'));
+      };
+      await dump('(initial)');
+
+      // If there's an Edit button, click the first one and re-dump.
+      const firstEdit = page.locator('a,button', { hasText: /^\s*edit\s*$/i }).first();
+      if (await firstEdit.isVisible({ timeout: 1500 }).catch(() => false)) {
+        await firstEdit.click().catch(() => {});
+        await page.waitForTimeout(1200);
+        await dump('(after clicking Edit)');
+      }
+
+      const saveBtns = await page.evaluate(() => {
+        const out = [];
+        document.querySelectorAll('a,button,input[type=submit],[role=button],.btn,[onclick]').forEach((e) => {
+          const t = (e.innerText || e.value || '').trim().replace(/\s+/g, ' ').slice(0, 30);
+          if (/save|update|submit/i.test(t)) out.push(e.tagName + ' [' + (e.className || '').toString().slice(0, 40) + '] "' + t + '"');
+        });
+        return out.slice(0, 15);
+      }).catch(() => []);
+      log('\n== "Save/Update/Submit" CANDIDATES ==\n' + (saveBtns.join('\n') || '(none)'));
+
+      fs.mkdirSync(path.resolve(__dirname, 'dump'), { recursive: true });
+      fs.writeFileSync(path.resolve(__dirname, 'dump/address.html'), await page.content());
+      log('\nSaved full edit-form HTML -> dump/address.html');
+      log('\nNext: put the confirmed selectors into config/settings.json -> address.editFormSelectors,');
+      log('then set address.writeToRei=true to enable live address write-back.');
+      return;
+    }
+
     // SCAN mode: node diagnose.js scan  -> find New leads that HAVE a contact.
     if (argId === 'scan') {
       const pipeline = new Pipeline(page, selectors, settings, log);

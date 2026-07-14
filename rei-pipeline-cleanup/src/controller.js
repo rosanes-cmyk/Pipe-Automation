@@ -12,7 +12,8 @@ const { Activity } = require('./activity');
 const { Updater } = require('./updater');
 const { Reporter } = require('./reporter');
 const { classify } = require('./status-rules');
-const { reviewAddress } = require('./address');
+const { reviewAddress, parseAddress } = require('./address');
+const { AddressWriter } = require('./address-writer');
 const { findDuplicates, normalizeAddress } = require('./duplicates');
 
 function nowIso() { return new Date().toISOString(); }
@@ -82,6 +83,7 @@ class Controller {
       const updater = new Updater(page, property, this.settings, this.log);
       const { Notes } = require('./notes');
       const notes = new Notes(page, this.settings, this.log);
+      const addressWriter = new AddressWriter(page, this.settings, this.log);
 
       let processed = 0;
       for (const lead of leads) {
@@ -90,7 +92,7 @@ class Controller {
         if (completed.has(lead.id)) continue;
 
         try {
-          await this._processLead({ lead, property, contact, activity, updater, notes, reporter,
+          await this._processLead({ lead, property, contact, activity, updater, notes, addressWriter, reporter,
             dupeKeys, manualReview, duplicateQueue, LIVE_MODE, AUDIT_MODE, processed });
         } catch (e) {
           this.log(`[error] ${lead.address} (${lead.id}): ${e.message}`);
@@ -120,7 +122,7 @@ class Controller {
   }
 
   async _processLead(ctx) {
-    const { lead, property, contact, activity, updater, notes, reporter, dupeKeys, manualReview, duplicateQueue, LIVE_MODE, AUDIT_MODE, processed } = ctx;
+    const { lead, property, contact, activity, updater, notes, addressWriter, reporter, dupeKeys, manualReview, duplicateQueue, LIVE_MODE, AUDIT_MODE, processed } = ctx;
 
     // 1. Skip the lead-sheet pre-read for speed — the decision doesn't need the
     //    current status, and the LIVE writer opens the lead sheet itself.
@@ -135,9 +137,10 @@ class Controller {
     let collected = { activities: [], notes: [], tags: [], confidence: 'empty' };
     if (hasContact) collected = await activity.collect(att.contactId).catch(() => collected);
 
-    // 4. Address review (flag-only unless configured).
-    const addr = reviewAddress({ street: lead.address, city: '', state: '', zip: '' },
-      { tidyStreetText: this.settings.address.tidyStreetText });
+    // 4. Address review — parse the combined address into parts so the Street/
+    //    City/ZIP can be tidied while the State field is left untouched (SOP §6-7).
+    const parsed = parseAddress(lead.address);
+    const addr = reviewAddress(parsed, { tidyStreetText: this.settings.address.tidyStreetText });
     // Geocoded one-field address ("..., CA, USA") — flag, cannot fix in UI.
     const geocoded = /,\s*[A-Z]{2},\s*USA$/i.test(lead.address);
 
@@ -166,6 +169,20 @@ class Controller {
       after = path.join(this.settings.paths.screenshotsAfter, `${processed}-${slug}.png`);
       if (this.settings.run.screenshotsAfter) await property.screenshot(after);
       if (!saved) this.log(`[FAILED SAVE] ${lead.address}: ${res.detail}`);
+    }
+
+    // Address write-back (LIVE, gated). Only when a tidy actually changed the
+    // Street/City/ZIP and the address isn't a geocoded one-field blob. Leaves
+    // State untouched. No-ops safely (flag) until selectors are confirmed live.
+    let addressWritten = false, addressWriteDetail = '';
+    if (LIVE_MODE && addr.addressCorrected && !geocoded) {
+      const res = await addressWriter
+        .writeAddress(lead.id, { street: addr.cleaned.street, city: addr.cleaned.city, zip: addr.cleaned.zip })
+        .catch((e) => ({ written: false, skipped: false, detail: e.message }));
+      addressWritten = res.written;
+      addressWriteDetail = res.detail;
+      if (!res.written && !res.skipped) addr.flags.push(`Address tidy not written: ${res.detail}`);
+      this.log(`[address] ${lead.address}: ${res.written ? 'tidied & verified' : (res.skipped ? 'skipped (gated)' : 'NOT written')} — ${res.detail}`);
     }
 
     const manualReason = geocoded ? 'Geocoded one-field address (,CA,USA) — cannot fix in UI; flag.'
@@ -198,6 +215,11 @@ class Controller {
       contact_verified: hasContact,
       contact_corrected: false,
       address_corrected: addr.addressCorrected,
+      address_written: addressWritten,
+      cleaned_address: addr.addressCorrected
+        ? [addr.cleaned.street, addr.cleaned.city, addr.cleaned.zip].filter(Boolean).join(', ')
+        : '',
+      address_write_detail: addressWriteDetail,
       state_issue: addr.stateIssue || (geocoded ? 'geocoded' : ''),
       possible_duplicate: isDupe,
       manual_review_required: !!needsManual,

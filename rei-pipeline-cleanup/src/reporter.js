@@ -6,7 +6,8 @@ const path = require('path');
 const COLUMNS = [
   'property_address', 'property_url', 'previous_status', 'recommended_status', 'updated_status',
   'latest_activity_date', 'latest_activity_type', 'latest_activity_summary',
-  'contact_name', 'contact_verified', 'contact_corrected', 'address_corrected', 'state_issue',
+  'contact_name', 'contact_verified', 'contact_corrected',
+  'address_corrected', 'cleaned_address', 'address_written', 'state_issue',
   'possible_duplicate', 'manual_review_required', 'manual_review_reason',
   'update_attempted', 'update_saved', 'before_screenshot', 'after_screenshot', 'processed_at',
 ];
