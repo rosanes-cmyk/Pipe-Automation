@@ -40,16 +40,17 @@ class Pipeline {
    * until the row count stops growing (or a cap), so we enumerate the full
    * bucket instead of just the first screen.
    */
-  async loadAllRows(maxScrolls = 60) {
+  async loadAllRows(target = Infinity, maxScrolls = 80) {
     let prev = -1, stable = 0;
     for (let i = 0; i < maxScrolls && stable < 3; i++) {
       const c = await this._addressLinks().count().catch(() => 0);
+      if (c >= target) { prev = c; break; }           // enough for this run
       if (c === prev) stable++; else { stable = 0; prev = c; }
       await this.page.evaluate(() => window.scrollTo(0, document.body.scrollHeight)).catch(() => {});
       await this.page.mouse.wheel(0, 30000).catch(() => {});
-      await this.page.waitForTimeout(1200);
+      await this.page.waitForTimeout(900);
     }
-    this.log(`Loaded ${prev} rows after scrolling.`);
+    this.log(`Loaded ${prev} rows after scrolling${target !== Infinity ? ` (needed ~${target})` : ''}.`);
     return prev;
   }
 
@@ -58,7 +59,11 @@ class Pipeline {
    * Each: { id, address, url }
    */
   async listNewLeads() {
-    await this.loadAllRows();
+    // Only scroll far enough to satisfy this run's MAX (with a small buffer for
+    // duplicates/non-New rows). A small --max test won't scroll the whole list.
+    const max = this.settings.mode.MAX_LEADS_PER_RUN;
+    const target = max && max > 0 ? max + 10 : Infinity;
+    await this.loadAllRows(target);
     const links = this._addressLinks();
     const n = await links.count().catch(() => 0);
     const seen = new Set();

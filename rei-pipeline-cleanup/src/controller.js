@@ -114,9 +114,9 @@ class Controller {
   async _processLead(ctx) {
     const { lead, property, contact, activity, updater, reporter, dupeKeys, manualReview, duplicateQueue, LIVE_MODE, AUDIT_MODE, processed } = ctx;
 
-    // 1. Lead sheet — current status.
-    await property.openLeadSheet(lead.id);
-    const previousStatus = await property.readMarketStatus().catch(() => '');
+    // 1. Skip the lead-sheet pre-read for speed — the decision doesn't need the
+    //    current status, and the LIVE writer opens the lead sheet itself.
+    const previousStatus = '';
 
     // 2. Attached contact -> contactId.
     const att = await contact.attachedContact(lead.id).catch(() => null);

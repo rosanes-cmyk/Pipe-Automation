@@ -10,7 +10,7 @@
   "browser": {
     "userDataDir": "./.chrome-profile",
     "headless": false,
-    "slowMoMs": 150,
+    "slowMoMs": 30,
     "channel": "chrome",
     "viewport": { "width": 1440, "height": 900 },
     "navigationTimeoutMs": 45000,
