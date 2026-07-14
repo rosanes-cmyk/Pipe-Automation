@@ -52,8 +52,31 @@ const log = (m) => console.log(m);
         const t = ((await btns.nth(i).innerText().catch(() => '')) || '').trim().replace(/\s+/g, ' ').slice(0, 30);
         if (t) log(`  "${t}"`);
       }
-      log('\n== NOTES PAGE TEXT (first 40 lines) ==');
-      log((await page.locator('body').innerText().catch(() => '')).split('\n').map((s) => s.trim()).filter(Boolean).slice(0, 40).join('\n'));
+      log('\n== NOTES PAGE TEXT (first 25 lines) ==');
+      log((await page.locator('body').innerText().catch(() => '')).split('\n').map((s) => s.trim()).filter(Boolean).slice(0, 25).join('\n'));
+
+      // Deep dump: the textarea's container + every clickable candidate (REI uses
+      // non-<button> controls) so the composer + save control can be mapped.
+      const info = await page.evaluate(() => {
+        const out = { ta: null, clickables: [], noteEls: [] };
+        const ta = document.querySelector('textarea');
+        if (ta) { let p = ta; for (let i = 0; i < 3 && p.parentElement; i++) p = p.parentElement; out.ta = p.outerHTML.slice(0, 2000); }
+        document.querySelectorAll('a,input[type=submit],input[type=button],[role=button],.btn,button,[onclick]').forEach((e) => {
+          const t = (e.innerText || e.value || '').trim().slice(0, 30);
+          const cls = (e.className || '').toString().slice(0, 45);
+          if (t || /save|add|note|post|submit/i.test(cls)) out.clickables.push(e.tagName + ' [' + cls + '] "' + t + '"');
+        });
+        document.querySelectorAll('[class*=note i],[id*=note i]').forEach((e) => out.noteEls.push(e.tagName + '  ' + ((e.className || e.id) + '').slice(0, 55)));
+        return out;
+      }).catch(() => null);
+      if (info) {
+        log('\n== TEXTAREA CONTAINER HTML ==\n' + (info.ta || '(no textarea found)'));
+        log('\n== CLICKABLE CANDIDATES (a / input / onclick / .btn) ==\n' + info.clickables.slice(0, 45).join('\n'));
+        log('\n== NOTE-CLASSED ELEMENTS ==\n' + info.noteEls.slice(0, 30).join('\n'));
+      }
+      fs.mkdirSync(path.resolve(__dirname, 'dump'), { recursive: true });
+      fs.writeFileSync(path.resolve(__dirname, 'dump/notes.html'), await page.content());
+      log('\nSaved full notes-page HTML -> dump/notes.html');
       return;
     }
 
