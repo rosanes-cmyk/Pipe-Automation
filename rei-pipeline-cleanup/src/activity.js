@@ -102,9 +102,14 @@ class Activity {
     const leadStage = parseField(text, 'Lead Stage');
     const disposition = parseField(text, 'Call Disposition');
     const category = parseField(text, 'Category');
-    if (this.log) this.log(`[contact ${contactId}] stage="${leadStage}" disp="${disposition}" ${activities.length} dated-act ${notes.length} note(s).`);
+    // Concrete evidence of outreach (a real call/text engagement), used for the
+    // "outreach but blank Lead Stage -> review" rule. Empty records show
+    // "Call\n--" which won't match these phrasings.
+    const hasOutreach = activities.length > 0 ||
+      /call\s*(outgoing|incoming)|outbound\s*call|inbound\s*call|call\s*summary|left\s*(a\s*)?(voicemail|message|vm)|text\s*(message\s*)?(sent|received)|\bsms\b|\bdialed\b|made\s*\d+\s*calls?/i.test(text);
+    if (this.log) this.log(`[contact ${contactId}] stage="${leadStage}" disp="${disposition}" outreach=${hasOutreach} ${notes.length} note(s).`);
     return {
-      activities, notes, tags, leadStage, disposition, category,
+      activities, notes, tags, leadStage, disposition, category, hasOutreach,
       confidence: activities.length || notes.length || leadStage ? 'contact-record' : 'empty',
     };
   }
