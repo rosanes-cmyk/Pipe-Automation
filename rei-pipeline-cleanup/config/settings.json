@@ -18,11 +18,15 @@
   },
 
   "urls": {
-    "$comment": "Confirmed from the live app (Phase 1).",
+    "$comment": "Confirmed from the live app + operator notes.",
+    "base": "https://my.reiblackbook.com",
     "login": "https://my.reiblackbook.com/",
-    "pipeline": "https://my.reiblackbook.com/properties/inbox",
-    "contacts": "https://my.reiblackbook.com/contacts",
-    "contactRecordPattern": "https://my.reiblackbook.com/contacts/{id}"
+    "pipeline": "https://my.reiblackbook.com/properties/inbox?status_filter=New",
+    "leadSheet": "/properties/leadsheet/form/{id}",
+    "contactsTab": "/properties/details/{id}/contacts",
+    "propertyNotes": "/properties/details/{id}/communication",
+    "contactRecord": "/contacts/{contactId}",
+    "addressEdit": "/properties/details/{id}/propertyDetails"
   },
 
   "marketStatus": {

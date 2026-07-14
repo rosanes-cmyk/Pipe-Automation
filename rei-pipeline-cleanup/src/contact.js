@@ -1,57 +1,52 @@
 'use strict';
 
 /**
- * Attached-contact navigation + verification.
- *
- * A real contact record lives at /contacts/{numericId}. We must NOT match menu
- * links like /contacts/deal-settings, so we filter to hrefs whose id is numeric
- * and prefer a visible link.
+ * Contacts tab: /properties/details/{id}/contacts
+ * The attached contact's name link is href="#{contactId}_panel_content".
+ * We navigate by URL and extract the contactId.
  */
 class Contact {
-  constructor(page, selectors, log) {
+  constructor(page, settings, log) {
     this.page = page;
+    this.settings = settings;
     this.log = log;
   }
 
-  async _recordLinks() {
-    const links = this.page.locator('a[href*="/contacts/"]');
-    const n = await links.count().catch(() => 0);
-    const out = [];
+  _abs(pathname) {
+    return new URL(pathname, this.settings.urls.base).toString();
+  }
+
+  /**
+   * Open the contacts tab for a property and return { contactId, name } or null.
+   */
+  async attachedContact(propertyId) {
+    const url = this._abs(this.settings.urls.contactsTab.replace('{id}', propertyId));
+    await this.page.goto(url, { waitUntil: 'domcontentloaded' }).catch(() => {});
+    await this.page.waitForTimeout(1000);
+
+    // Contact name link -> href="#12345_panel_content"
+    const panels = this.page.locator('a[href*="_panel_content"]');
+    const n = await panels.count().catch(() => 0);
     for (let i = 0; i < n; i++) {
-      const loc = links.nth(i);
-      const href = await loc.getAttribute('href').catch(() => null);
-      if (href && /\/contacts\/\d+/.test(href)) {
-        const visible = await loc.isVisible().catch(() => false);
-        const text = (await loc.innerText().catch(() => '')).trim();
-        out.push({ loc, href, visible, text });
+      const href = await panels.nth(i).getAttribute('href').catch(() => '');
+      const m = href && href.match(/#?(\d+)_panel_content/);
+      if (m) {
+        const name = ((await panels.nth(i).innerText().catch(() => '')) || '').trim().replace(/\s+/g, ' ');
+        return { contactId: m[1], name };
       }
     }
-    // Prefer visible links.
-    out.sort((a, b) => Number(b.visible) - Number(a.visible));
-    return out;
-  }
-
-  async hasAttachedContact() {
-    const links = await this._recordLinks();
-    return links.length > 0;
-  }
-
-  async openAttachedContact() {
-    const links = await this._recordLinks();
-    if (links.length === 0) throw new Error('No attached contact record link (/contacts/{id}) found on the CONTACTS tab.');
-    const target = links[0];
-    const name = target.text;
-    const href = target.href;
-    if (target.visible) {
-      await target.loc.click({ timeout: 8000 }).catch(async () => {
-        await this.page.goto(new URL(href, this.page.url()).toString(), { waitUntil: 'domcontentloaded' });
-      });
-    } else {
-      // Not clickable — navigate directly to the record.
-      await this.page.goto(new URL(href, this.page.url()).toString(), { waitUntil: 'domcontentloaded' });
+    // Fallback: a direct /contacts/{id} link if present.
+    const rec = this.page.locator('a[href*="/contacts/"]');
+    const rn = await rec.count().catch(() => 0);
+    for (let i = 0; i < rn; i++) {
+      const href = await rec.nth(i).getAttribute('href').catch(() => '');
+      const m = href && href.match(/\/contacts\/(\d+)/);
+      if (m) {
+        const name = ((await rec.nth(i).innerText().catch(() => '')) || '').trim().replace(/\s+/g, ' ');
+        return { contactId: m[1], name };
+      }
     }
-    await this.page.waitForTimeout(1200);
-    return { name, url: new URL(href, this.page.url()).toString() };
+    return null;
   }
 }
 
