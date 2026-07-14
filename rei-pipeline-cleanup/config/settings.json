@@ -30,9 +30,10 @@
   },
 
   "marketStatus": {
-    "$comment": "REI 'Market Status' value that maps to each pipeline stage. Evaluating is confirmed ('Follow up'). The others are OPEN ITEMS (SOP v2 §8) — leave null and the engine HOLDS + flags those leads instead of guessing a value.",
+    "$comment": "REI Market Status vocabulary (confirmed from the live dropdown): New, Available, Unsold, Follow up, Contract Pending, Under Contract, Sold, Rented, Outsourced, Dead, Closed, Need to mail postcard, Invalid Lead, For Rent, Pending, Property Sold, Wrong Number, Do Not Mail, Interested, Cancelled Contract, Listed in the market, Declined offer, Unresponsive, Under Contract (Dispo).",
+    "$comment_mapping": "Evaluating='Follow up' (confirmed). UnderContract='Under Contract'. ClosedWon/ClosedDead left null until Jonathan confirms which value to use (options like Sold/Closed for won; Dead/Declined offer/Wrong Number for dead) — null makes the engine HOLD + flag instead of guessing.",
     "Evaluating": "Follow up",
-    "UnderContract": null,
+    "UnderContract": "Under Contract",
     "ClosedWon": null,
     "ClosedDead": null
   },
