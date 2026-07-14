@@ -29,7 +29,34 @@ const log = (m) => console.log(m);
   try {
     await ensureLoggedIn(page, settings, log);
 
-    let propId = argId;
+    // SCAN mode: node diagnose.js scan  -> find New leads that HAVE a contact.
+    if (argId === 'scan') {
+      const pipeline = new Pipeline(page, selectors, settings, log);
+      await pipeline.open();
+      const leads = await pipeline.listNewLeads();
+      log(`\n== SCAN: checking up to 30 of ${leads.length} New leads for attached contacts ==`);
+      let firstHit = null;
+      for (let i = 0; i < Math.min(leads.length, 30); i++) {
+        const l = leads[i];
+        const cUrl = abs(settings.urls.contactsTab.replace('{id}', l.id));
+        await page.goto(cUrl, { waitUntil: 'domcontentloaded' }).catch(() => {});
+        await page.waitForTimeout(700);
+        const cnt = await page.locator('a[href*="_panel_content"]').count().catch(() => 0);
+        log(`  ${cnt > 0 ? '● ' + cnt : '·  '}  ${l.id}  ${l.address}`);
+        if (cnt > 0 && !firstHit) firstHit = l;
+      }
+      if (firstHit) {
+        log(`\nFirst New lead WITH a contact: ${firstHit.id} (${firstHit.address}). Dumping its contact record...`);
+        process.argv[2] = firstHit.id; // fall through to detailed dump below
+      } else {
+        log('\nNo New lead in the sample has an attached contact (contacts tab shows the empty state).');
+        log('That means most/all New-bucket leads here are un-worked → correctly left as New.');
+        log('To confirm detection works, run: node diagnose.js <id-of-a-Follow-up-lead>');
+        return;
+      }
+    }
+
+    let propId = (process.argv[2] === 'scan') ? null : process.argv[2];
     if (!propId) {
       const pipeline = new Pipeline(page, selectors, settings, log);
       await pipeline.open();
