@@ -15,14 +15,20 @@ class Pipeline {
 
   async open() {
     const url = this.settings.urls.pipeline;
-    for (let attempt = 1; attempt <= 3; attempt++) {
+    for (let attempt = 1; attempt <= 6; attempt++) {
       await this.page.goto(url, { waitUntil: 'domcontentloaded' });
-      const ok = await this._addressLinks().first()
-        .waitFor({ state: 'visible', timeout: 20000 }).then(() => true).catch(() => false);
-      if (ok) return;
-      this.log(`Pipeline list didn't render (attempt ${attempt}) — reloading...`);
+      // Poll for rows to attach (not necessarily "visible") — the list renders
+      // lazily and a loading overlay can keep links technically hidden.
+      const deadline = Date.now() + 30000;
+      while (Date.now() < deadline) {
+        const c = await this._addressLinks().count().catch(() => 0);
+        if (c > 0) return;
+        await this.page.waitForTimeout(1500);
+      }
+      this.log(`Pipeline list didn't render (attempt ${attempt}/6) — reloading...`);
+      await this.page.waitForTimeout(1500);
     }
-    throw new Error('Pipeline "New" list did not load after 3 attempts (known intermittent hang). Try again.');
+    throw new Error('Pipeline "New" list did not load after 6 attempts (known intermittent hang). Run the command again — a fresh load usually works.');
   }
 
   _addressLinks() {
