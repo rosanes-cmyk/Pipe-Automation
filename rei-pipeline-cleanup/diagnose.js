@@ -29,6 +29,34 @@ const log = (m) => console.log(m);
   try {
     await ensureLoggedIn(page, settings, log);
 
+    // NOTES mode: node diagnose.js notes <id>  -> reveal the property Notes UI.
+    if (argId === 'notes') {
+      const id = process.argv[3];
+      if (!id) { log('Usage: node diagnose.js notes <propertyId>'); return; }
+      const u = abs((settings.urls.propertyNotes || '/properties/details/{id}/communication').replace('{id}', id));
+      await page.goto(u, { waitUntil: 'domcontentloaded' }).catch(() => {});
+      await page.waitForTimeout(2000);
+      log(`\n== NOTES PAGE: ${u} ==`);
+      for (const [name, sel] of [['textarea', 'textarea'], ['contenteditable', '[contenteditable="true"]'], ['inputs', 'input']]) {
+        const loc = page.locator(sel); const n = await loc.count().catch(() => 0);
+        log(`\n${name}: ${n}`);
+        for (let i = 0; i < Math.min(n, 6); i++) {
+          const ph = await loc.nth(i).getAttribute('placeholder').catch(() => '');
+          const vis = await loc.nth(i).isVisible().catch(() => false);
+          log(`  [${vis ? 'V' : '-'}] ${sel}  placeholder="${ph || ''}"`);
+        }
+      }
+      const btns = page.getByRole('button'); const bn = await btns.count().catch(() => 0);
+      log(`\nbuttons: ${bn}`);
+      for (let i = 0; i < Math.min(bn, 25); i++) {
+        const t = ((await btns.nth(i).innerText().catch(() => '')) || '').trim().replace(/\s+/g, ' ').slice(0, 30);
+        if (t) log(`  "${t}"`);
+      }
+      log('\n== NOTES PAGE TEXT (first 40 lines) ==');
+      log((await page.locator('body').innerText().catch(() => '')).split('\n').map((s) => s.trim()).filter(Boolean).slice(0, 40).join('\n'));
+      return;
+    }
+
     // SCAN mode: node diagnose.js scan  -> find New leads that HAVE a contact.
     if (argId === 'scan') {
       const pipeline = new Pipeline(page, selectors, settings, log);

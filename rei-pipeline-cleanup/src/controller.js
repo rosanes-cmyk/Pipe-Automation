@@ -80,6 +80,8 @@ class Controller {
       const contact = new Contact(page, this.settings, this.log);
       const activity = new Activity(page, this.settings, this.log);
       const updater = new Updater(page, property, this.settings, this.log);
+      const { Notes } = require('./notes');
+      const notes = new Notes(page, this.settings, this.log);
 
       let processed = 0;
       for (const lead of leads) {
@@ -88,7 +90,7 @@ class Controller {
         if (completed.has(lead.id)) continue;
 
         try {
-          await this._processLead({ lead, property, contact, activity, updater, reporter,
+          await this._processLead({ lead, property, contact, activity, updater, notes, reporter,
             dupeKeys, manualReview, duplicateQueue, LIVE_MODE, AUDIT_MODE, processed });
         } catch (e) {
           this.log(`[error] ${lead.address} (${lead.id}): ${e.message}`);
@@ -118,7 +120,7 @@ class Controller {
   }
 
   async _processLead(ctx) {
-    const { lead, property, contact, activity, updater, reporter, dupeKeys, manualReview, duplicateQueue, LIVE_MODE, AUDIT_MODE, processed } = ctx;
+    const { lead, property, contact, activity, updater, notes, reporter, dupeKeys, manualReview, duplicateQueue, LIVE_MODE, AUDIT_MODE, processed } = ctx;
 
     // 1. Skip the lead-sheet pre-read for speed — the decision doesn't need the
     //    current status, and the LIVE writer opens the lead sheet itself.
@@ -168,7 +170,19 @@ class Controller {
 
     const manualReason = geocoded ? 'Geocoded one-field address (,CA,USA) — cannot fix in UI; flag.'
       : (decision.manualReviewReason || (isDupe ? 'possible duplicate' : ''));
-    if (needsManual) manualReview.push({ id: lead.id, address: lead.address, url: lead.url, reason: manualReason, at: nowIso() });
+
+    // Auto-write the note into REI for review/held/duplicate leads (no person needed).
+    let noteWritten = false;
+    if (LIVE_MODE && needsManual && this.settings.run.autoWriteNotes) {
+      const noteText = isDupe
+        ? `Possible duplicate of another pipeline record (same address). ${decision.note || ''}`.trim()
+        : (decision.note || manualReason || 'Flagged by pipeline cleanup — needs review.');
+      const res = await notes.writeNote(lead.id, noteText).catch((e) => ({ written: false, detail: e.message }));
+      noteWritten = res.written;
+      this.log(`[note] ${lead.address}: ${res.written ? 'written' : 'NOT written'} — ${res.detail}`);
+    }
+
+    if (needsManual) manualReview.push({ id: lead.id, address: lead.address, url: lead.url, reason: manualReason, noteWritten, at: nowIso() });
     if (isDupe) duplicateQueue.push({ key: normalizeAddress(lead.address), id: lead.id, address: lead.address, url: lead.url, at: nowIso() });
 
     reporter.add({
