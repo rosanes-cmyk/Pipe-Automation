@@ -4,7 +4,8 @@
   "mode": {
     "AUDIT_MODE": true,
     "LIVE_MODE": false,
-    "MAX_LEADS_PER_RUN": 1
+    "MAX_LEADS_PER_RUN": 100000,
+    "$comment_max": "No per-run cap — each run works the whole New bucket top-to-bottom until done; the daily schedule re-runs it the next day. (--max still overrides for a quick test.)"
   },
 
   "browser": {
