@@ -37,10 +37,23 @@ class Controller {
     if (AUDIT_MODE && LIVE_MODE) throw new Error('AUDIT_MODE and LIVE_MODE cannot both be true.');
     this.log(`Mode=${LIVE_MODE ? 'LIVE' : 'AUDIT'}  MAX_LEADS_PER_RUN=${MAX_LEADS_PER_RUN}`);
 
-    const progress = readJson(this.settings.paths.progress, { completed: [] });
-    const completed = new Set(progress.completed || []);
-    const manualReview = readJson(this.settings.paths.manualReview, []);
-    const duplicateQueue = readJson(this.settings.paths.duplicates, []);
+    // Fresh run (default): re-check the whole New bucket from the top, no skip.
+    // Resume (--resume): continue an interrupted run, skipping leads already done.
+    const resume = !!this.settings.mode.RESUME;
+    let completed, manualReview, duplicateQueue;
+    if (resume) {
+      const progress = readJson(this.settings.paths.progress, { completed: [] });
+      completed = new Set(progress.completed || []);
+      manualReview = readJson(this.settings.paths.manualReview, []);
+      duplicateQueue = readJson(this.settings.paths.duplicates, []);
+      this.log(`RESUME: continuing; skipping ${completed.size} lead(s) already done this run.`);
+    } else {
+      completed = new Set();
+      manualReview = [];
+      duplicateQueue = [];
+      writeJson(this.settings.paths.progress, { completed: [], startedAt: nowIso() });
+      this.log('Fresh run: re-checking the whole New bucket from the top (no skip).');
+    }
     const reporter = new Reporter(this.settings);
 
     const { context, page } = await launch(this.settings);

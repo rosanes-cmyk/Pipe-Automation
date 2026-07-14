@@ -29,10 +29,11 @@ function makeLogger(logPath) {
 }
 
 function parseArgs(argv) {
-  const a = { audit: false, live: false, max: null };
+  const a = { audit: false, live: false, max: null, resume: false };
   for (let i = 2; i < argv.length; i++) {
     if (argv[i] === '--audit') a.audit = true;
     else if (argv[i] === '--live') a.live = true;
+    else if (argv[i] === '--resume') a.resume = true;
     else if (argv[i] === '--max') a.max = parseInt(argv[++i], 10);
   }
   return a;
@@ -46,6 +47,7 @@ async function main() {
   if (args.live) { settings.mode.LIVE_MODE = true; settings.mode.AUDIT_MODE = false; }
   if (args.audit) { settings.mode.AUDIT_MODE = true; settings.mode.LIVE_MODE = false; }
   if (Number.isInteger(args.max)) settings.mode.MAX_LEADS_PER_RUN = args.max;
+  settings.mode.RESUME = args.resume;
 
   const log = makeLogger(settings.paths.log);
   const controller = new Controller(settings, selectors, log);
