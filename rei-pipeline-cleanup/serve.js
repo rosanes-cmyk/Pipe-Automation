@@ -53,22 +53,22 @@ function startRun(mode, max) {
 const APP = `<!doctype html><html lang="en"><head><meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/><title>Pipeline Cleanup — App</title>
 <style>
-:root{--bg:#000;--panel:#0c0d10;--panel-2:#141519;--ink:#f2f4f7;--muted:#8b93a1;--border:#212329;--accent:#4d8dff;--ok:#2ee06a;--warn:#ffb020;--dead:#ff5a5a;--mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;--sans:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
+:root{--bg:#f4f7fc;--panel:#ffffff;--panel-2:#eef2f8;--ink:#141c2e;--muted:#6d7a92;--border:#e1e8f2;--accent:#2f6bff;--ok:#12b76a;--warn:#f59e0b;--dead:#ef4655;--mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;--sans:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans)}
-.bar{position:sticky;top:0;z-index:5;display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:14px 18px;background:var(--panel);border-bottom:1px solid var(--border)}
-.bar h1{font-size:16px;margin:0 12px 0 0}
+.bar{position:sticky;top:0;z-index:5;display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:14px 18px;background:var(--panel);border-bottom:1px solid var(--border);box-shadow:0 2px 10px rgba(16,24,40,.05)}
+.bar h1{font-size:17px;font-weight:700;margin:0 12px 0 0;letter-spacing:-.01em}
 label{font-size:13px;color:var(--muted)}
-select,input{background:var(--panel-2);color:var(--ink);border:1px solid var(--border);border-radius:8px;padding:6px 9px;font-size:13px}
+select,input{background:#fff;color:var(--ink);border:1px solid var(--border);border-radius:9px;padding:7px 10px;font-size:13px}
 input#max{width:70px;font-family:var(--mono)}
-button{border:0;border-radius:8px;padding:8px 15px;font-size:13px;font-weight:600;cursor:pointer}
-#start{background:var(--accent);color:#04122e}#stop{background:var(--panel-2);color:var(--ink);border:1px solid var(--border)}
-button:disabled{opacity:.45;cursor:not-allowed}
-.badge{margin-left:auto;font-family:var(--mono);font-size:12px;padding:4px 11px;border-radius:999px;border:1px solid var(--border)}
-.badge.idle{color:var(--muted)}.badge.run{color:#04122e;background:var(--ok)}.badge.err{color:#fff;background:var(--dead)}
+button{border:0;border-radius:9px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer}
+#start{background:var(--accent);color:#fff;box-shadow:0 2px 8px rgba(47,107,255,.35)}#stop{background:#fff;color:var(--ink);border:1px solid var(--border)}
+button:disabled{opacity:.45;cursor:not-allowed;box-shadow:none}
+.badge{margin-left:auto;font-family:var(--mono);font-size:12px;padding:5px 12px;border-radius:999px;border:1px solid var(--border);color:var(--muted);font-weight:600}
+.badge.idle{color:var(--muted)}.badge.run{color:#fff;background:var(--ok);border-color:transparent}.badge.err{color:#fff;background:var(--dead);border-color:transparent}
 .wrap{padding:16px 18px}
-.log{background:#05060a;border:1px solid var(--border);border-radius:10px;padding:12px;height:180px;overflow:auto;font-family:var(--mono);font-size:12px;line-height:1.5;white-space:pre-wrap;color:#c9d3df;margin-bottom:16px}
-iframe{width:100%;height:1100px;border:1px solid var(--border);border-radius:12px;background:var(--bg)}
-.hint{color:var(--muted);font-size:12px;margin:2px 0 12px}
+.log{background:#0f1729;border:1px solid #1e293b;border-radius:12px;padding:13px;height:170px;overflow:auto;font-family:var(--mono);font-size:12px;line-height:1.55;white-space:pre-wrap;color:#cdd8ec;margin-bottom:16px}
+iframe{width:100%;height:1150px;border:1px solid var(--border);border-radius:14px;background:var(--bg);box-shadow:0 2px 10px rgba(16,24,40,.05)}
+.hint{color:var(--muted);font-size:12.5px;margin:2px 0 12px}
 </style></head><body>
 <div class="bar">
   <h1>Pipeline Cleanup</h1>
