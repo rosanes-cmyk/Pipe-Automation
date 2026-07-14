@@ -104,6 +104,12 @@ class Controller {
       }
 
       reporter.flush();
+      reporter.appendDaily(LIVE_MODE ? 'LIVE' : 'AUDIT');
+      try {
+        const { writeDashboard } = require('./dashboard');
+        const out = writeDashboard(this.settings);
+        this.log(`Dashboard updated -> ${out}`);
+      } catch (e) { this.log(`[dashboard] ${e.message}`); }
       this._printSummary(reporter, LIVE_MODE);
       return reporter.summary();
     } finally {

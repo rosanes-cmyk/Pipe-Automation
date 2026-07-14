@@ -43,6 +43,18 @@ class Reporter {
     fs.writeFileSync(path.resolve(this.settings.paths.reportsJson), JSON.stringify(this.rows, null, 2));
   }
 
+  /** Append this run's summary to the daily-history log (for the daily dashboard). */
+  appendDaily(mode) {
+    const p = path.resolve(this.settings.paths.dailyHistory || './reports/daily-history.json');
+    let hist = [];
+    try { hist = JSON.parse(fs.readFileSync(p, 'utf8')); } catch { hist = []; }
+    const now = new Date();
+    hist.push({ ts: now.toISOString(), date: now.toISOString().slice(0, 10), mode, ...this.summary() });
+    fs.mkdirSync(path.dirname(p), { recursive: true });
+    fs.writeFileSync(p, JSON.stringify(hist, null, 2));
+    return hist;
+  }
+
   summary() {
     const s = {
       total: this.rows.length,

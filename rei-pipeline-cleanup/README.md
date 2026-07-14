@@ -58,6 +58,25 @@ node app.js --live --max 1
 Updates exactly one lead, verifies the save by reload, captures before/after
 screenshots, records the result, and stops. **Review before increasing `--max`.**
 
+## Dashboard & daily report
+
+Every run writes reports and **auto-generates a dashboard**:
+- `reports/pipeline-results.csv` / `.json` — the latest run's per-lead results.
+- `reports/daily-history.json` — one summary record appended per run (the daily report).
+- `reports/dashboard.html` — a self-contained black-UI dashboard (latest run + daily trend + notable leads). Double-click to open.
+
+Regenerate the dashboard anytime:
+```bash
+node dashboard.js
+```
+
+Live dashboard server (the "API daily report dashboard") — reflects the newest
+run on each refresh:
+```bash
+node serve.js            # http://localhost:8787
+# endpoints: /  (dashboard)   /api/latest   /api/daily
+```
+
 ## Test the pure logic (no browser)
 
 ```bash

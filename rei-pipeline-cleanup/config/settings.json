@@ -55,6 +55,8 @@
   "paths": {
     "reportsCsv": "./reports/pipeline-results.csv",
     "reportsJson": "./reports/pipeline-results.json",
+    "dailyHistory": "./reports/daily-history.json",
+    "dashboardHtml": "./reports/dashboard.html",
     "progress": "./data/progress.json",
     "manualReview": "./data/manual-review.json",
     "duplicates": "./data/duplicates.json",

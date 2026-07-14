@@ -2,6 +2,7 @@ node_modules/
 .chrome-profile/
 reports/*.csv
 reports/*.json
+reports/*.html
 screenshots/**/*.png
 logs/*.log
 data/progress.json
