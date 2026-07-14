@@ -60,10 +60,17 @@ class Controller {
     try {
       await ensureLoggedIn(page, this.settings, this.log);
 
-      const pipeline = new Pipeline(page, this.selectors, this.settings, this.log);
-      await pipeline.open();
-      const leads = await pipeline.listNewLeads();
-      this.log(`Found ${leads.length} New-bucket leads (processing from the top).`);
+      let leads;
+      if (this.settings.mode.TARGET_ID) {
+        const id = String(this.settings.mode.TARGET_ID);
+        leads = [{ id, address: `(id ${id})`, url: new URL(`/properties/details/${id}`, this.settings.urls.base).toString() }];
+        this.log(`Targeted run: single lead id=${id}`);
+      } else {
+        const pipeline = new Pipeline(page, this.selectors, this.settings, this.log);
+        await pipeline.open();
+        leads = await pipeline.listNewLeads();
+        this.log(`Found ${leads.length} New-bucket leads (processing from the top).`);
+      }
 
       // Duplicate detection across the visible New set (flag-only).
       const dupeGroups = findDuplicates(leads.map((l) => ({ propertyId: l.id, address: l.address })));
