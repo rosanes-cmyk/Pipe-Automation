@@ -37,9 +37,25 @@ class Property {
     return (checked || '').trim();
   }
 
+  /**
+   * Click the property's CONTACTS *tab* — not the top-nav "Contacts" menu.
+   * Both contain the text "Contacts"; the tab sits lower on the page, so among
+   * matches we click the one with the greatest y (furthest down).
+   */
   async openContactsTab() {
-    await locate(this.page, this.sel.tabContacts, 'property.tabContacts').first().click();
-    await this.page.waitForLoadState('domcontentloaded');
+    const candidates = this.page.getByText(/^contacts$/i);
+    const n = await candidates.count().catch(() => 0);
+    let best = null, bestY = -1;
+    for (let i = 0; i < n; i++) {
+      const box = await candidates.nth(i).boundingBox().catch(() => null);
+      if (box && box.y > bestY) { bestY = box.y; best = candidates.nth(i); }
+    }
+    const target = best || candidates.first();
+    await target.click({ timeout: 8000 }).catch(async () => {
+      // Fallback: a tab/link named exactly CONTACTS.
+      await this.page.getByRole('link', { name: /^contacts$/i }).last().click().catch(() => {});
+    });
+    await this.page.waitForTimeout(1200);
   }
 
   /**
