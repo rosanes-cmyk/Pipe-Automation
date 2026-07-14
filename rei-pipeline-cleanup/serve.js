@@ -237,8 +237,8 @@ async function openReport(){
     'held <b>'+c.uc+'</b> Under-Contract lead(s) for a person, and flagged <b>'+c.mr+'</b> for manual review'+(c.dup?(' plus <b>'+c.dup+'</b> possible duplicate(s)'):'')+'. '+
     'The remaining <b>'+c.new+'</b> had no contact/activity and were correctly left as New. Every change is reversible and the State field was never touched.';
   const attention=rows.filter(r=>r.recommended_status!=='New'||r.manual_review_required).slice(0,120);
-  const tbl=attention.length?('<table><thead><tr><th>Property</th><th>Decision</th><th>Why</th><th>REI</th></tr></thead><tbody>'+
-    attention.map(r=>{const url=r.property_url||'https://my.reiblackbook.com/properties/inbox';return '<tr><td>'+esc(r.property_address||'')+(r.contact_name?' — '+esc(r.contact_name):'')+'</td><td>'+esc(r.recommended_status)+'</td><td>'+esc(r.manual_review_reason||r.latest_activity_summary||'')+'</td><td><a href="'+esc(url)+'" target="_blank">open ↗</a></td></tr>';}).join('')+'</tbody></table>'):'<div class="muted">No leads needed changes today.</div>';
+  const tbl=attention.length?('<table><thead><tr><th>Property</th><th>Decision</th><th>Why</th></tr></thead><tbody>'+
+    attention.map(r=>'<tr><td>'+esc(r.property_address||'')+(r.contact_name?' — '+esc(r.contact_name):'')+'</td><td>'+esc(r.recommended_status)+'</td><td>'+esc(r.manual_review_reason||r.latest_activity_summary||'')+'</td></tr>').join('')+'</tbody></table>'):'<div class="muted">No leads needed changes today.</div>';
   const days=(daily||[]).slice(-10).reverse();
   const hist=days.length?('<h4>Recent daily runs</h4><table><thead><tr><th>Date</th><th>Mode</th><th>Reviewed</th><th>Follow up</th><th>Dead</th><th>Review</th></tr></thead><tbody>'+
     days.map(d=>'<tr><td>'+esc(d.date||'')+'</td><td>'+esc(d.mode||'')+'</td><td>'+(d.total||0)+'</td><td>'+(d.evaluating||0)+'</td><td>'+(d.closed||0)+'</td><td>'+(d.manualReview||0)+'</td></tr>').join('')+'</tbody></table>'):'';
