@@ -33,7 +33,12 @@ class Pipeline {
     const leads = [];
     for (let i = 0; i < count; i++) {
       const row = rows.nth(i);
-      const statusText = (await row.locator('select').first().inputValue().catch(() => '')) || '';
+      // Read the selected option text of the row's Status <select> (robust to
+      // option value vs. label differences).
+      const statusText = (
+        (await row.locator('select option:checked').first().innerText().catch(() => '')) ||
+        (await row.locator('select').first().inputValue().catch(() => ''))
+      ).trim();
       const address = (await row.locator('td').nth(0).innerText().catch(() => '')).trim();
       const city = (await row.locator('td').nth(1).innerText().catch(() => '')).trim();
       const state = (await row.locator('td').nth(2).innerText().catch(() => '')).trim();

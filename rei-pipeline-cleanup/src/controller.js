@@ -111,11 +111,23 @@ class Controller {
         if (LIVE_MODE && this.settings.run.screenshotsBefore) await property.screenshot(before);
 
         const isDupe = dupeKeys.has(normalizeAddress(lead.address));
-        const needsManual = decision.action === 'manual_review' || decision.action === 'hold' || addr.stateIssue || isDupe;
+
+        // Safety: never write a status off a low-confidence (heuristic) activity read.
+        const heuristicBlock =
+          LIVE_MODE &&
+          decision.action === 'set_status' &&
+          collected.confidence === 'heuristic' &&
+          this.settings.run.requireStructuredActivityForLive;
+
+        const needsManual =
+          decision.action === 'manual_review' || decision.action === 'hold' ||
+          !!addr.stateIssue || isDupe || heuristicBlock;
 
         let updatedStatus = '', attempted = false, saved = false, after = '';
 
-        if (LIVE_MODE && decision.action === 'set_status' && decision.marketStatusValue) {
+        if (heuristicBlock) {
+          this.log(`[hold] ${lead.address}: activity read was heuristic — not writing in LIVE. Confirm contact.activityItem selector first.`);
+        } else if (LIVE_MODE && decision.action === 'set_status' && decision.marketStatusValue) {
           const res = await updater.applyAndVerify(url, decision.marketStatusValue);
           attempted = res.attempted; saved = res.saved;
           updatedStatus = saved ? decision.recommendedStatus : previousStatus;
@@ -127,8 +139,11 @@ class Controller {
         }
 
         // Queues.
+        const manualReason = heuristicBlock
+          ? 'Heuristic activity read — confirm contact.activityItem selector before writing.'
+          : (decision.manualReviewReason || (addr.stateIssue ? `state:${addr.stateIssue}` : (isDupe ? 'possible duplicate' : 'hold')));
         if (needsManual) {
-          manualReview.push({ address: lead.address, url, reason: decision.manualReviewReason || (addr.stateIssue ? `state:${addr.stateIssue}` : 'duplicate/hold'), at: nowIso() });
+          manualReview.push({ address: lead.address, url, reason: manualReason, at: nowIso() });
         }
         if (isDupe) {
           duplicateQueue.push({ key: normalizeAddress(lead.address), address: lead.address, url, at: nowIso() });
@@ -150,7 +165,7 @@ class Controller {
           state_issue: addr.stateIssue || '',
           possible_duplicate: isDupe,
           manual_review_required: !!needsManual,
-          manual_review_reason: needsManual ? (decision.manualReviewReason || addr.flags.join('; ')) : '',
+          manual_review_reason: needsManual ? manualReason : '',
           update_attempted: attempted,
           update_saved: saved,
           before_screenshot: LIVE_MODE ? before : '',

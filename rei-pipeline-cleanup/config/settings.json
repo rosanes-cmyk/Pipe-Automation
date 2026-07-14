@@ -42,7 +42,9 @@
     "checkpointEvery": 25,
     "maxVerifyRetries": 1,
     "screenshotsBefore": true,
-    "screenshotsAfter": true
+    "screenshotsAfter": true,
+    "requireStructuredActivityForLive": true,
+    "$comment_activity": "When true, a LIVE run will NOT write a status based on a low-confidence (heuristic) activity read — it holds + flags instead. Audit still reports the recommendation. Set a real contact.activityItem selector to raise reads to 'structured' and enable live writes."
   },
 
   "paths": {

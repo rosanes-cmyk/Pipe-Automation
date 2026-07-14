@@ -11,15 +11,14 @@
   },
 
   "property": {
-    "statusSelect":       { "by": "css", "value": "TODO_STATUS_SELECT", "confidence": "TODO", "note": "The Market Status dropdown top-right of the property (shows New / Follow up). Confirm its stable selector." },
+    "statusSelect":       { "by": "code", "value": "auto", "confidence": "code", "note": "Resolved in property.js by scanning <select>s for New/Follow up/Under Contract/Closed options (distinguishes it from Deal Type). No manual selector needed." },
     "editPropertyDetails":{ "by": "text", "value": "Edit Property Details", "confidence": "high" },
     "tabContacts":        { "by": "text", "value": "CONTACTS", "confidence": "high" },
     "tabNotes":           { "by": "text", "value": "NOTES", "confidence": "high" },
     "tabLeadSheet":       { "by": "text", "value": "LEAD SHEET", "confidence": "high" },
     "tabTasks":           { "by": "text", "value": "TASKS", "confidence": "high" },
     "addressField":       { "by": "label", "value": "Address", "confidence": "medium" },
-    "saveButton":         { "by": "role", "role": "button", "value": "Save", "confidence": "TODO", "note": "Confirm the Save control that persists a status/detail change (the save handler must fire — selecting the dropdown alone silently reverts)." },
-    "saveSuccessToast":   { "by": "css", "value": "TODO_SUCCESS_TOAST", "confidence": "TODO", "note": "Success confirmation shown after save, if any." }
+    "saveButton":         { "by": "code", "value": "auto", "confidence": "code", "note": "property.js clicks a visible Save button if one exists, else relies on the select's change handler; verification is by reload either way." }
   },
 
   "editDetails": {
@@ -30,9 +29,8 @@
   },
 
   "contact": {
-    "attachedContactLink": { "by": "css", "value": "TODO_CONTACT_LINK", "confidence": "TODO", "note": "Link to the attached contact record from the CONTACTS tab." },
-    "activityFeed":        { "by": "css", "value": "TODO_ACTIVITY_FEED", "confidence": "TODO" },
-    "activityItem":        { "by": "css", "value": "TODO_ACTIVITY_ITEM", "confidence": "TODO", "note": "Each activity row: type, timestamp, summary." },
+    "attachedContactLink": { "by": "css", "value": "a[href*=\"/contacts/\"]", "confidence": "high", "note": "Content-based: the attached contact link on the CONTACTS tab points at /contacts/{id}." },
+    "activityItem":        { "by": "css", "value": "", "confidence": "fallback", "note": "Empty = use the code fallback in activity.js (heuristic text/time extraction). Fill with a precise selector once the contact-record DOM is confirmed to raise confidence." },
     "callsSection":        { "by": "text", "value": "Calls", "confidence": "low" },
     "textsSection":        { "by": "text", "value": "Texts", "confidence": "low" },
     "emailsSection":       { "by": "text", "value": "Emails", "confidence": "low" },
