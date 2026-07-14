@@ -86,6 +86,38 @@ label.chk{display:flex;align-items:center;gap:7px;color:var(--ink-2);font-size:1
 .row2{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
 .sched{display:flex;align-items:center;gap:10px;color:var(--ink-2);font-size:13px;margin-bottom:16px}
 .log{background:#070c14;border:1px solid var(--line);border-radius:12px;padding:14px;height:210px;overflow:auto;font-family:var(--mono);font-size:12px;line-height:1.55;white-space:pre-wrap;color:#c3d0e4}
+.stat{cursor:pointer;transition:.12s}.stat:hover{border-color:var(--accent);transform:translateY(-2px)}
+.detail{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:18px}
+.detail .close{float:right;cursor:pointer;color:var(--muted);font-size:13px}
+.detail h3{margin:0 0 4px;font-size:16px}
+.detail .hint{color:var(--muted);font-size:12.5px;margin-bottom:10px}
+.lead{padding:11px 0;border-bottom:1px solid var(--line)}
+.lead:last-child{border-bottom:0}
+.lead .top{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.lead a.addr{color:var(--ink);font-weight:700;text-decoration:none;font-size:14px}
+.lead a.addr:hover{color:var(--accent);text-decoration:underline}
+.lead .open{color:var(--accent);font-size:12px;text-decoration:none;font-weight:600}
+.lead .cont{color:var(--ink-2);font-family:var(--mono);font-size:12px}
+.lead .st{font-size:11px;font-weight:700;padding:2px 9px;border-radius:999px}
+.st.ev{background:#12331f;color:#4ade80}.st.cl{background:#3a1518;color:#f87171}.st.uc{background:#2a1840;color:#c084fc}.st.mr{background:#3a2c0c;color:#fbbf24}.st.nw{background:#1a2436;color:#93a4bd}
+.lead .why{color:var(--muted);font-size:12px;margin-top:4px}
+.modal-bg{position:fixed;inset:0;background:rgba(4,8,14,.7);backdrop-filter:blur(3px);z-index:50;display:flex;align-items:flex-start;justify-content:center;padding:40px 16px;overflow:auto}
+.modal{background:#fff;color:#141c2e;width:100%;max-width:820px;border-radius:14px;padding:26px 30px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.modaltop{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;border-bottom:1px solid #e6ebf3;padding-bottom:14px;margin-bottom:16px}
+.modal h2{margin:0;font-size:20px}
+.modal .muted{color:#6d7a92;font-size:13px}
+.modal .explain{background:#f4f7fc;border:1px solid #e6ebf3;border-radius:10px;padding:14px 16px;font-size:14px;margin-bottom:16px;line-height:1.6}
+.modal .krow{display:flex;gap:22px;flex-wrap:wrap;margin-bottom:18px}
+.modal .krow .k{font-size:12px;color:#6d7a92;text-transform:uppercase;letter-spacing:.04em}
+.modal .krow .kv{font-size:24px;font-weight:750}
+.modal h4{font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:#6d7a92;margin:18px 0 8px}
+.modal table{width:100%;border-collapse:collapse;font-size:13px}
+.modal th,.modal td{text-align:left;padding:8px 8px;border-bottom:1px solid #eef2f8}
+.modal th{color:#6d7a92;font-size:11px;text-transform:uppercase}
+.modal a{color:#2f6bff}
+.modal .btn{background:#2f6bff;color:#fff;border:0;border-radius:8px;padding:8px 14px;font-weight:700;cursor:pointer;margin-left:8px}
+.modal .btn.ghost{background:#eef2f8;color:#141c2e}
+@media print{body *{visibility:hidden!important}.modal-bg,.modal-bg *{visibility:visible!important}.modal-bg{position:absolute;inset:0;background:#fff;padding:0;display:block}.modal{box-shadow:none;max-width:100%}.noprint{display:none!important}}
 .hide{display:none}
 </style></head><body><div class="app">
 
@@ -109,6 +141,7 @@ label.chk{display:flex;align-items:center;gap:7px;color:var(--ink-2);font-size:1
   </div>
 
   <div class="stats" id="stats"></div>
+  <div id="detail" class="detail hide"></div>
 
   <div class="controls">
     <button class="btn green" id="start" onclick="startRun(false)">▶ Start</button>
@@ -134,12 +167,26 @@ label.chk{display:flex;align-items:center;gap:7px;color:var(--ink-2);font-size:1
 
   <div class="log hide" id="log">Ready. Set your options and click Start.</div>
 </div>
+
+<div class="modal-bg hide" id="modalbg" onclick="if(event.target===this)closeReport()">
+  <div class="modal" id="report">
+    <div class="modaltop">
+      <div><h2 id="rtitle">Daily Report</h2><div class="muted" id="rdate"></div></div>
+      <div class="noprint">
+        <button class="btn" onclick="savePDF()">🖨 Save as PDF</button>
+        <button class="btn ghost" onclick="closeReport()">✕ Close</button>
+      </div>
+    </div>
+    <div id="rbody"></div>
+  </div>
+</div>
 <script>
-let live=false, wasRunning=false;
+let live=false, wasRunning=false, ROWS=[];
+function esc(v){return String(v==null?'':v).replace(/[<&>"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));}
+function stClass(st){return st==='Evaluating'?'ev':st==='Closed'?'cl':st==='Under Contract'?'uc':'nw';}
 function toggleLive(){ live=!live; const b=document.getElementById('live'); b.textContent=(live?'● Live writing: ON':'● Live writing: OFF'); b.className='toggle'+(live?'':' off'); }
 function toggleLog(){ document.getElementById('log').classList.toggle('hide'); }
-function openReport(){ window.open('/dashboard','_blank'); }
-function schedNote(){ const on=document.getElementById('schedchk').checked; document.getElementById('schednote').textContent = on ? 'Scheduled — see setup note below (uses Windows Task Scheduler)' : 'Off — you start each run manually'; if(on) alert('To run daily automatically, add a Windows Task Scheduler task that runs:  node app.js --live --max 300  in this folder at your chosen time. Ask for the ready-made .bat + task and I will add it.'); }
+function schedNote(){ const on=document.getElementById('schedchk').checked; document.getElementById('schednote').textContent = on ? 'Scheduled — needs a Windows Task Scheduler task (see note)' : 'Off — you start each run manually'; if(on) alert('To run daily automatically, add a Windows Task Scheduler task that runs:  node app.js --live --max 300  in this folder at your chosen time. Ask me for the ready-made .bat + task.'); }
 async function startRun(resume){
   if(live && !resume && !confirm('LIVE writing is ON. This will WRITE statuses in REI (Follow up / Dead). Continue?'))return;
   document.getElementById('log').classList.remove('hide');
@@ -148,16 +195,66 @@ async function startRun(resume){
   poll();
 }
 async function stopRun(){ document.getElementById('auto').checked=false; await fetch('/api/stop',{method:'POST'}); }
-function setNum(id,val,cls){ document.getElementById(id).innerHTML='<div class="num '+cls+'">'+val+'</div>'; }
+
+const CATS={all:'All reviewed',ev:'Follow up',cl:'Dead',uc:'Under Contract',mr:'Manual review',dup:'Duplicates'};
+function catMatch(cat,r){return cat==='all'?true:cat==='ev'?r.recommended_status==='Evaluating':cat==='cl'?r.recommended_status==='Closed':cat==='uc'?r.recommended_status==='Under Contract':cat==='mr'?!!r.manual_review_required:cat==='dup'?!!r.possible_duplicate:false;}
+function showCat(cat){
+  const list=ROWS.filter(r=>catMatch(cat,r));
+  const d=document.getElementById('detail'); d.classList.remove('hide');
+  d.innerHTML='<span class="close" onclick="document.getElementById(\\'detail\\').classList.add(\\'hide\\')">✕ close</span>'+
+    '<h3>'+CATS[cat]+' ('+list.length+')</h3><div class="hint">Click an address to open the lead in REI BlackBook.</div>'+
+    (list.length?list.map(r=>{
+      const url=r.property_url||('https://my.reiblackbook.com/properties/inbox');
+      const st=r.recommended_status||'New';
+      return '<div class="lead"><div class="top">'+
+        '<a class="addr" href="'+esc(url)+'" target="_blank">'+esc(r.property_address||'(no address)')+'</a>'+
+        '<span class="st '+stClass(st)+'">'+esc(st)+'</span>'+
+        (r.contact_name?'<span class="cont">'+esc(r.contact_name)+'</span>':'')+
+        '<a class="open" href="'+esc(url)+'" target="_blank">↗ Open in REI</a></div>'+
+        '<div class="why">'+esc(r.manual_review_reason||r.latest_activity_summary||r.latest_activity_type||'')+'</div></div>';
+    }).join(''):'<div class="muted" style="padding:8px 0">No leads in this category.</div>');
+  d.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
 async function loadStats(){
   try{
-    const rows=await fetch('/api/latest').then(r=>r.json());
-    const c={total:rows.length,ev:0,cl:0,uc:0,mr:0,dup:0};
-    rows.forEach(r=>{ if(r.recommended_status==='Evaluating')c.ev++; else if(r.recommended_status==='Closed')c.cl++; else if(r.recommended_status==='Under Contract')c.uc++; if(r.manual_review_required)c.mr++; if(r.possible_duplicate)c.dup++; });
-    const cards=[['TOTAL REVIEWED',c.total,'n-white',''],['FOLLOW UP',c.ev,'n-green',''],['DEAD',c.cl,'n-red',''],['UNDER CONTRACT',c.uc,'n-purple',''],['MANUAL REVIEW',c.mr,'n-amber',''],['DUPLICATES',c.dup,'n-cyan','hl']];
-    document.getElementById('stats').innerHTML=cards.map(x=>'<div class="stat '+x[3]+'"><div class="num '+x[2]+'">'+x[1]+'</div><div class="lab">'+x[0]+'</div></div>').join('');
+    ROWS=await fetch('/api/latest').then(r=>r.json());
+    const c={total:ROWS.length,ev:0,cl:0,uc:0,mr:0,dup:0};
+    ROWS.forEach(r=>{ if(r.recommended_status==='Evaluating')c.ev++; else if(r.recommended_status==='Closed')c.cl++; else if(r.recommended_status==='Under Contract')c.uc++; if(r.manual_review_required)c.mr++; if(r.possible_duplicate)c.dup++; });
+    const cards=[['TOTAL REVIEWED',c.total,'n-white','','all'],['FOLLOW UP',c.ev,'n-green','','ev'],['DEAD',c.cl,'n-red','','cl'],['UNDER CONTRACT',c.uc,'n-purple','','uc'],['MANUAL REVIEW',c.mr,'n-amber','','mr'],['DUPLICATES',c.dup,'n-cyan','hl','dup']];
+    document.getElementById('stats').innerHTML=cards.map(x=>'<div class="stat '+x[3]+'" onclick="showCat(\\''+x[4]+'\\')"><div class="num '+x[2]+'">'+x[1]+'</div><div class="lab">'+x[0]+'</div></div>').join('');
   }catch(e){}
 }
+
+// Daily Report — pops out as an overlay, printable to PDF, with a plain-English summary.
+async function openReport(){
+  const [rows,daily]=await Promise.all([fetch('/api/latest').then(r=>r.json()),fetch('/api/daily').then(r=>r.json())]);
+  const c={total:rows.length,ev:0,cl:0,uc:0,mr:0,dup:0,new:0};
+  rows.forEach(r=>{ const s=r.recommended_status; if(s==='Evaluating')c.ev++; else if(s==='Closed')c.cl++; else if(s==='Under Contract')c.uc++; else c.new++; if(r.manual_review_required)c.mr++; if(r.possible_duplicate)c.dup++; });
+  const today=new Date().toISOString().slice(0,10);
+  document.getElementById('rdate').textContent='Twin Home Buyer · REI BlackBook · '+today;
+  const explain='Today the automation reviewed <b>'+c.total+'</b> leads from the New pipeline. '+
+    'It set <b>'+c.ev+'</b> to <b>Follow up</b> and <b>'+c.cl+'</b> to <b>Dead</b> (both based on the rep\\'s own Lead Stage), '+
+    'held <b>'+c.uc+'</b> Under-Contract lead(s) for a person, and flagged <b>'+c.mr+'</b> for manual review'+(c.dup?(' plus <b>'+c.dup+'</b> possible duplicate(s)'):'')+'. '+
+    'The remaining <b>'+c.new+'</b> had no contact/activity and were correctly left as New. Every change is reversible and the State field was never touched.';
+  const attention=rows.filter(r=>r.recommended_status!=='New'||r.manual_review_required).slice(0,120);
+  const tbl=attention.length?('<table><thead><tr><th>Property</th><th>Decision</th><th>Why</th><th>REI</th></tr></thead><tbody>'+
+    attention.map(r=>{const url=r.property_url||'https://my.reiblackbook.com/properties/inbox';return '<tr><td>'+esc(r.property_address||'')+(r.contact_name?' — '+esc(r.contact_name):'')+'</td><td>'+esc(r.recommended_status)+'</td><td>'+esc(r.manual_review_reason||r.latest_activity_summary||'')+'</td><td><a href="'+esc(url)+'" target="_blank">open ↗</a></td></tr>';}).join('')+'</tbody></table>'):'<div class="muted">No leads needed changes today.</div>';
+  const days=(daily||[]).slice(-10).reverse();
+  const hist=days.length?('<h4>Recent daily runs</h4><table><thead><tr><th>Date</th><th>Mode</th><th>Reviewed</th><th>Follow up</th><th>Dead</th><th>Review</th></tr></thead><tbody>'+
+    days.map(d=>'<tr><td>'+esc(d.date||'')+'</td><td>'+esc(d.mode||'')+'</td><td>'+(d.total||0)+'</td><td>'+(d.evaluating||0)+'</td><td>'+(d.closed||0)+'</td><td>'+(d.manualReview||0)+'</td></tr>').join('')+'</tbody></table>'):'';
+  document.getElementById('rbody').innerHTML=
+    '<div class="explain">'+explain+'</div>'+
+    '<div class="krow"><div><div class="k">Reviewed</div><div class="kv">'+c.total+'</div></div>'+
+    '<div><div class="k">Follow up</div><div class="kv" style="color:#16a34a">'+c.ev+'</div></div>'+
+    '<div><div class="k">Dead</div><div class="kv" style="color:#dc2626">'+c.cl+'</div></div>'+
+    '<div><div class="k">Under Contract</div><div class="kv" style="color:#7c3aed">'+c.uc+'</div></div>'+
+    '<div><div class="k">Review</div><div class="kv" style="color:#b45309">'+c.mr+'</div></div>'+
+    '<div><div class="k">Duplicates</div><div class="kv" style="color:#0891b2">'+c.dup+'</div></div></div>'+
+    '<h4>Leads that changed or need attention ('+attention.length+')</h4>'+tbl+hist;
+  document.getElementById('modalbg').classList.remove('hide');
+}
+function closeReport(){ document.getElementById('modalbg').classList.add('hide'); }
+function savePDF(){ window.print(); }
 async function poll(){
   try{
     const s=await fetch('/api/status').then(r=>r.json());

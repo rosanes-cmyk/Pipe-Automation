@@ -143,7 +143,9 @@ function buildHtml(rows, history, meta = {}) {
         else if (st === 'Under Contract') { act = 'act hold'; txt = 'hold (human)'; }
         else { act = 'act hold'; txt = 'review'; }
         const disp = st === 'New' ? 'Needs review' : st;
-        return `<tr><td class="addr">${esc(r.property_address)}</td><td class="mono">${esc(r.contact_name || '—')}</td>
+        const url = r.property_url || '';
+        const addrCell = url ? `<a href="${esc(url)}" target="_blank" style="color:var(--accent);text-decoration:none">${esc(r.property_address)} ↗</a>` : esc(r.property_address);
+        return `<tr><td class="addr">${addrCell}</td><td class="mono">${esc(r.contact_name || '—')}</td>
           <td><span class="chip ${chip(st)}">${esc(disp)}</span></td>
           <td class="${act}">${txt}</td>
           <td class="mono">${esc(r.manual_review_reason || r.latest_activity_summary || r.latest_activity_type || '')}</td></tr>`;
