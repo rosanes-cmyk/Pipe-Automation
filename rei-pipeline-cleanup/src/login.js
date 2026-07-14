@@ -4,27 +4,39 @@
  * Session restoration. With a persistent Chrome profile we do NOT automate
  * credentials — you log into REI by hand once in the launched browser, and the
  * profile keeps you signed in. This checks whether we're logged in and, if not,
- * waits for a manual login (so we never store or type a password).
+ * waits (up to LOGIN_WAIT_MS) for a manual login, so we never store a password.
  */
+
+const LOGIN_WAIT_MS = 10 * 60 * 1000; // 10 minutes to log in by hand
+const POLL_MS = 3000;
+
+async function isLoginScreen(page) {
+  const pw = page.locator('input[type="password"]');
+  return pw.first().isVisible().catch(() => false);
+}
 
 async function ensureLoggedIn(page, settings, log) {
   await page.goto(settings.urls.login, { waitUntil: 'domcontentloaded' });
 
-  // Heuristic: a visible password field means we're on a login screen.
-  const passwordField = page.locator('input[type="password"]');
-  const needsLogin = await passwordField.first().isVisible().catch(() => false);
-
-  if (needsLogin) {
-    log('Not logged in. Please log into REI BlackBook in the opened browser window.');
-    log('Waiting for login to complete (up to 5 minutes)...');
-    await passwordField
-      .first()
-      .waitFor({ state: 'detached', timeout: 5 * 60 * 1000 })
-      .catch(() => { throw new Error('Login not completed in time.'); });
-    log('Login detected.');
-  } else {
+  if (!(await isLoginScreen(page))) {
     log('Existing session restored (already logged in).');
+    return;
   }
+
+  log('Not logged in. A Chrome window is open — please log into REI BlackBook there.');
+  log(`Waiting up to ${Math.round(LOGIN_WAIT_MS / 60000)} minutes for you to finish logging in...`);
+
+  const deadline = Date.now() + LOGIN_WAIT_MS;
+  while (Date.now() < deadline) {
+    await page.waitForTimeout(POLL_MS);
+    // Logged in when the password field is gone (navigated past the login screen).
+    if (!(await isLoginScreen(page))) {
+      await page.waitForTimeout(1500); // let the app settle
+      log('Login detected — continuing.');
+      return;
+    }
+  }
+  throw new Error('Login not completed within the allowed time. Re-run the command and log in when the window opens.');
 }
 
 module.exports = { ensureLoggedIn };
