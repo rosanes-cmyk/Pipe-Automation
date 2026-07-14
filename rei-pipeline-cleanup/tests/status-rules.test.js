@@ -63,6 +63,11 @@ test('dead lead stage + re-inquiry note -> manual review', () => {
   assert.equal(d.action, 'manual_review');
 });
 
+test('review disposition/stage -> manual review', () => {
+  assert.equal(classify(P({ leadStage: 'For Review' }), MS).action, 'manual_review');
+  assert.equal(classify(P({ leadStage: '', disposition: 'Needs Review' }), MS).action, 'manual_review');
+});
+
 test('outreach logged but blank Lead Stage -> manual review (borderline)', () => {
   const d = classify(P({ leadStage: '', hasOutreach: true }), MS);
   assert.equal(d.action, 'manual_review');

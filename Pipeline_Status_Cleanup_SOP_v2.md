@@ -58,7 +58,7 @@ Set status from the latest activity on the attached contact:
 | **Evaluating** | Any contact made / analysis started — called, texted, emailed, comps run, offer being worked | Set **Market Status = "Follow up"** (confirmed to surface in the Evaluating rollup) |
 | **Under Contract** | A signed contract / accepted offer is noted | Set the Under-Contract Market Status value _(confirm exact value — see §8)_ |
 | **Closed** | Deal closed or dead per the most recent note | Set the Closed Market Status value _(confirm Closed-won vs Closed-dead — see §8)_ |
-| **Manual review** | Activity unclear or conflicting | Leave status unchanged; write a note explaining why |
+| **Manual review** | Activity unclear or conflicting, OR the contact's Lead Stage / Call Disposition is a **review** status (e.g. "For Review", "Needs Review") | Leave status unchanged; write a note explaining why |
 
 ### Save mechanism (critical)
 

@@ -80,6 +80,7 @@ function stageFromSignals(leadStage, disposition) {
   if (/under\s*contract|accepted\s*offer|contract\s*(sent|signed|pending)|in\s*escrow|closing/.test(s)) return 'UnderContract';
   if (/\bclosed\s*won\b|\bsold\b|\bfunded\b|deal\s*closed|completed\s*sale/.test(s)) return 'ClosedWon';
   if (/\bdead\b|\blost\b|not\s*interested|wrong\s*number|do\s*not\s*(mail|call|contact)|\bdnc\b|unqualified|invalid|declined|remove\s*from\s*list|trash|bad\s*(number|lead)|we\s*passed/.test(s)) return 'ClosedDead';
+  if (/\breview\b|for\s*review|needs?\s*review|to\s*review|manual\s*review/.test(s)) return 'Review';
   if (/follow\s*up|interested|nurtur|made?\s*an?\s*offer|\boffer\b|appointment|property\s*visit|\bwarm\b|\bhot\b|contacted|negotiat|callback|call\s*back|left\s*(a\s*)?(voicemail|message|vm)|answered|spoke|attempt|working|in\s*progress/.test(s)) return 'Evaluating';
   if (/new\s*lead|^\s*\d*\s*new\b|^\s*new\s*$/.test(s)) return 'New';
   return null;
@@ -124,6 +125,12 @@ function classify(input, marketStatus) {
   if (signalStage === 'New') {
     return { ...base, recommendedStatus: 'New', action: 'leave_new', marketStatusValue: null,
       reason: `${label} is a New/unworked stage.`, note: null, manualReviewReason: null };
+  }
+  if (signalStage === 'Review') {
+    return { ...base, recommendedStatus: 'New', action: 'manual_review', marketStatusValue: null,
+      reason: `${label} indicates the lead is flagged for review.`,
+      note: 'Lead Stage / disposition is a review status — left as-is for a human to decide.',
+      manualReviewReason: 'Marked for review in REI.' };
   }
 
   // 3. Lead Stage blank/unrecognized, but outreach was logged -> borderline,
