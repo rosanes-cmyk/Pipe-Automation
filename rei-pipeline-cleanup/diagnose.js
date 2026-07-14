@@ -62,9 +62,32 @@ const log = (m) => console.log(m);
 
     await dumpContactLinks('AFTER clicking CONTACTS tab');
 
+    // Navigate the contacts tab by URL (robust): /properties/details/{id}/contacts
+    const m = url.match(/\/properties\/details\/(\d+)/);
+    if (m) {
+      const contactsUrl = `https://my.reiblackbook.com/properties/details/${m[1]}/contacts`;
+      await page.goto(contactsUrl, { waitUntil: 'domcontentloaded' }).catch(() => {});
+      await page.waitForTimeout(1500);
+      log(`\n== NAVIGATED TO CONTACTS TAB BY URL ==\n${contactsUrl}`);
+    }
+
+    log('\n== CONTACTS TAB — visible text (first 60 lines) ==');
+    const ctext = (await page.locator('body').innerText().catch(() => ''))
+      .split('\n').map((s) => s.trim()).filter(Boolean).slice(0, 60).join('\n');
+    log(ctext);
+
+    log('\n== CONTACTS TAB — all links (href | text), first 40 ==');
+    const all = page.locator('a');
+    const an = await all.count().catch(() => 0);
+    for (let i = 0; i < Math.min(an, 40); i++) {
+      const href = await all.nth(i).getAttribute('href').catch(() => '');
+      const txt = ((await all.nth(i).innerText().catch(() => '')) || '').trim().replace(/\s+/g, ' ').slice(0, 45);
+      if (txt || (href && href !== '#')) log(`  ${href}   "${txt}"`);
+    }
+
     fs.mkdirSync(path.resolve(__dirname, 'dump'), { recursive: true });
     fs.writeFileSync(path.resolve(__dirname, 'dump/property.html'), await page.content());
-    log('\nSaved full property HTML -> dump/property.html');
+    log('\nSaved full contacts-tab HTML -> dump/property.html');
 
     // Open the first real contact record (/contacts/{number}) if present.
     const recs = page.locator('a[href*="/contacts/"]');
