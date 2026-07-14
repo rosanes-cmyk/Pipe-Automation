@@ -118,7 +118,7 @@ function buildHtml(rows, history, meta = {}) {
 
   const lede = `<b>${meta.mode === 'LIVE' || meta.mode === 'live view' ? 'Latest run' : 'Latest audit'}</b> — reviewed <b>${s.total}</b> leads: ` +
     `<b>${s.evaluating}</b> set to Follow&nbsp;up, <b>${s.closed}</b> marked Dead, ` +
-    `<b>${s.manualReview}</b> flagged for review, <b>${s.leftNew}</b> left New` +
+    `<b>${s.manualReview}</b> flagged (auto-noted), <b>${s.leftNew}</b> left New` +
     `${s.failed ? ` · <span style="color:var(--dead)">${s.failed} failed writes</span>` : ' · 0 errors'}.`;
 
   const card = (dot, k, v, sub) => `<div class="card" style="--c:${dot}"><div class="k"><span class="d"></span>${k}</div><div class="v">${v}</div><div class="sub">${sub}</div></div>`;
@@ -142,7 +142,7 @@ function buildHtml(rows, history, meta = {}) {
         else if (st === 'Closed') { act = r.update_attempted ? (r.update_saved ? 'act ok' : 'act fail') : 'act ok'; txt = r.update_attempted ? (r.update_saved ? '✓ set “Dead”' : '✗ save failed') : '→ Dead'; }
         else if (st === 'Under Contract') { act = 'act hold'; txt = 'hold (human)'; }
         else { act = 'act hold'; txt = 'review'; }
-        const disp = st === 'New' ? 'Needs review' : st;
+        const disp = st === 'New' ? 'Flagged' : st;
         const url = r.property_url || '';
         const addrCell = url ? `<a href="${esc(url)}" target="_blank" style="color:var(--accent);text-decoration:none">${esc(r.property_address)} ↗</a>` : esc(r.property_address);
         return `<tr><td class="addr">${addrCell}</td><td class="mono">${esc(r.contact_name || '—')}</td>
@@ -166,7 +166,7 @@ function buildHtml(rows, history, meta = {}) {
     ${card('var(--eval)', 'Follow up', s.evaluating, 'active → Evaluating')}
     ${card('var(--dead)', 'Dead', s.closed, 'lost/dead → Closed')}
     ${card('var(--uc)', 'Under Contract', s.underContract, 'held for a human')}
-    ${card('var(--review)', 'Review', s.manualReview, 'flagged, unchanged')}
+    ${card('var(--review)', 'Flagged', s.manualReview, 'auto-noted, no action needed')}
     ${card('var(--ok)', 'Duplicates', s.duplicates, 'flagged, not merged')}
   </div>
 

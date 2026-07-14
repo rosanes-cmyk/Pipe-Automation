@@ -52,13 +52,32 @@ If there is any activity on the attached contact, change the status to match. If
 
 Set status from the latest activity on the attached contact:
 
-| Set status to… | When the attached contact shows… | How to set it in REI |
+| Set status to… | When the attached contact shows… | REI action (automated) |
 | :-- | :-- | :-- |
-| **New** (leave as-is) | No notes and no contact — nobody has touched the lead | No change |
-| **Evaluating** | Any contact made / analysis started — called, texted, emailed, comps run, offer being worked | Set **Market Status = "Follow up"** (confirmed to surface in the Evaluating rollup) |
-| **Under Contract** | A signed contract / accepted offer is noted | Set the Under-Contract Market Status value _(confirm exact value — see §8)_ |
-| **Closed** | Deal closed or dead per the most recent note | Set the Closed Market Status value _(confirm Closed-won vs Closed-dead — see §8)_ |
-| **Manual review** | Activity unclear or conflicting, OR the contact's Lead Stage / Call Disposition is a **review** status (e.g. "For Review", "Needs Review") | Leave status unchanged; write a note explaining why |
+| **New** (leave as-is) | No contact / not worked | No change |
+| **Evaluating** | Worked lead — Lead Stage / disposition is Follow up, Interested, Made an Offer, Warm, etc. | **Writes Market Status = "Follow up"** (auto, reload-verified) |
+| **Dead** (Closed) | Lead Stage / disposition is Lost / Dead / Invalid / Wrong number / Not interested / DNC / declined / we passed | **Writes Market Status = "Dead"** (auto, reload-verified) |
+| **Under Contract** | Lead Stage / note is Under Contract / accepted offer / contract signed / in escrow | **Held** — not written; bot **auto-writes a note** (high-stakes, human confirms) |
+| **Closed-won** | A real completed sale (sold / funded / closed won) | **Held** — not written; bot auto-writes a note (reserve Sold/Closed for a true sale) |
+| **Flagged** (auto-noted) | Self-contradictory or ambiguous: a Dead stage **plus** a re-inquiry; outreach logged but **no** Lead Stage; a literal "Review" stage | Status left unchanged; bot **auto-writes an explanatory note**. No person required. |
+
+### Exact automated ruleset (top-to-bottom; first match wins)
+
+The decision is made **from the contact's Lead Stage / Call Disposition** — the rep's own categorization — never from tags.
+
+0. No contact **and** no activity **and** no Lead Stage → **New** (leave).
+1. Lead Stage / disposition contains:
+   - `under contract · accepted offer · contract sent/signed/pending · in escrow · closing` → **Under Contract** → *held + note*.
+   - `closed won · sold · funded · deal closed · completed sale` → **Closed-won** → *held + note*.
+   - `dead · lost · not interested · wrong number · do not mail/call · dnc · unqualified · invalid · declined · remove from list · trash · bad number/lead · we passed` → **Dead** → *writes "Dead"*.
+     - **but** if a re-inquiry / re-engagement note is also present → **Flagged** (conflict) → *note only*.
+   - `follow up · interested · nurture · made an offer · offer · appointment · property visit · warm · hot · contacted · negotiating · callback · left voicemail/message · answered · spoke · attempt · working · in progress` → **Evaluating** → *writes "Follow up"*.
+   - `new lead · "N New" · new` → **New** (leave).
+   - `review · for review · needs review · to review` → **Flagged** → *note only*.
+2. Lead Stage blank **but** outreach (call/text) logged → **Flagged** (borderline) → *note only*.
+3. Contact exists, no Lead Stage, no outreach → **New** (leave).
+
+**Auto-notes:** every *Held* and *Flagged* lead gets an explanatory note written into REI automatically (property Notes tab) — nobody has to touch it. Duplicates are flagged with a note on the record; never merged or deleted. The **State field is never touched**.
 
 ### Save mechanism (critical)
 
@@ -88,13 +107,14 @@ Setting the dropdown value alone **silently reverts**. A status change only pers
 
 ---
 
-## 8. Open items to confirm before the full run
+## 8. Market Status mapping — CONFIRMED
 
-1. **Market Status mapping for the two closed stages:** which value = Closed-won, which = Closed-dead.
-2. **Assign the remaining granular Market Status values** (Interested, Nurture, Made an Offer, Contract sent, Unresponsive, etc.) to a pipeline stage.
-3. **Confirm the Under Contract value** (none seen in the test sample).
+- **Evaluating** → writes **"Follow up"** (auto).
+- **Dead** (Lost / Invalid / Wrong number / etc.) → writes **"Dead"** (auto). Not `Closed` — `Closed`/`Sold` are reserved for a real completed sale.
+- **Under Contract** → **held** for a human (rare + high-stakes; never auto-written), with an auto-note.
+- **Closed-won** (actual sale) → **held** with an auto-note.
 
-Until confirmed, treat any lead that would be Under Contract or Closed as **manual review** and note it, rather than guessing the value.
+Both auto-writes (Follow up, Dead) transcribe the rep's own Lead Stage, so they are recording the rep's determination — not guessing — and are reversible. Genuinely contradictory leads are **Flagged** (status left unchanged) and auto-noted; nothing wrong is written.
 
 ---
 

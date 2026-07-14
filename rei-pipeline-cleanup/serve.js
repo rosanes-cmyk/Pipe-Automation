@@ -192,7 +192,7 @@ async function startRun(resume){
 }
 async function stopRun(){ document.getElementById('auto').checked=false; await fetch('/api/stop',{method:'POST'}); }
 
-const CATS={all:'All reviewed',ev:'Follow up',cl:'Dead',uc:'Under Contract',mr:'Manual review',dup:'Duplicates'};
+const CATS={all:'All reviewed',ev:'Follow up',cl:'Dead',uc:'Under Contract',mr:'Flagged',dup:'Duplicates'};
 function catMatch(cat,r){return cat==='all'?true:cat==='ev'?r.recommended_status==='Evaluating':cat==='cl'?r.recommended_status==='Closed':cat==='uc'?r.recommended_status==='Under Contract':cat==='mr'?!!r.manual_review_required:cat==='dup'?!!r.possible_duplicate:false;}
 function showCat(cat){
   const list=ROWS.filter(r=>catMatch(cat,r));
@@ -212,7 +212,7 @@ async function loadStats(){
     const c={total:ROWS.length,ev:0,cl:0,uc:0,mr:0,dup:0};
     ROWS.forEach(r=>{ if(r.recommended_status==='Evaluating')c.ev++; else if(r.recommended_status==='Closed')c.cl++; else if(r.recommended_status==='Under Contract')c.uc++; if(r.manual_review_required)c.mr++; if(r.possible_duplicate)c.dup++; });
     document.getElementById('firstrun').classList.toggle('hide', ROWS.length>0);
-    const cards=[['TOTAL REVIEWED',c.total,'n-white','','all'],['FOLLOW UP',c.ev,'n-green','','ev'],['DEAD',c.cl,'n-red','','cl'],['UNDER CONTRACT',c.uc,'n-purple','','uc'],['MANUAL REVIEW',c.mr,'n-amber','','mr'],['DUPLICATES',c.dup,'n-cyan','hl','dup']];
+    const cards=[['TOTAL REVIEWED',c.total,'n-white','','all'],['FOLLOW UP',c.ev,'n-green','','ev'],['DEAD',c.cl,'n-red','','cl'],['UNDER CONTRACT',c.uc,'n-purple','','uc'],['FLAGGED',c.mr,'n-amber','','mr'],['DUPLICATES',c.dup,'n-cyan','hl','dup']];
     document.getElementById('stats').innerHTML=cards.map(x=>'<div class="stat '+x[3]+'" onclick="showCat(\\''+x[4]+'\\')"><div class="num '+x[2]+'">'+x[1]+'</div><div class="lab">'+x[0]+'</div></div>').join('');
   }catch(e){}
 }
@@ -226,8 +226,8 @@ async function openReport(){
   const attention=rows.filter(r=>r.recommended_status!=='New'||r.manual_review_required).slice(0,120);
   const tbl=attention.length?('<table><thead><tr><th>Property</th><th>Decision</th><th>Why</th></tr></thead><tbody>'+attention.map(r=>'<tr><td>'+esc(r.property_address||'')+(r.contact_name?' — '+esc(r.contact_name):'')+'</td><td>'+esc(r.recommended_status)+'</td><td>'+esc(r.manual_review_reason||r.latest_activity_summary||'')+'</td></tr>').join('')+'</tbody></table>'):'<div class="muted">No leads needed changes today.</div>';
   const days=(daily||[]).slice(-10).reverse();
-  const hist=days.length?('<h4>Recent daily runs</h4><table><thead><tr><th>Date</th><th>Mode</th><th>Reviewed</th><th>Follow up</th><th>Dead</th><th>Review</th></tr></thead><tbody>'+days.map(d=>'<tr><td>'+esc(d.date||'')+'</td><td>'+esc(d.mode||'')+'</td><td>'+(d.total||0)+'</td><td>'+(d.evaluating||0)+'</td><td>'+(d.closed||0)+'</td><td>'+(d.manualReview||0)+'</td></tr>').join('')+'</tbody></table>'):'';
-  document.getElementById('rbody').innerHTML='<div class="explain">'+explain+'</div><div class="krow"><div><div class="k">Reviewed</div><div class="kv">'+c.total+'</div></div><div><div class="k">Follow up</div><div class="kv" style="color:#16a34a">'+c.ev+'</div></div><div><div class="k">Dead</div><div class="kv" style="color:#dc2626">'+c.cl+'</div></div><div><div class="k">Under Contract</div><div class="kv" style="color:#7c3aed">'+c.uc+'</div></div><div><div class="k">Review</div><div class="kv" style="color:#b45309">'+c.mr+'</div></div><div><div class="k">Duplicates</div><div class="kv" style="color:#0891b2">'+c.dup+'</div></div></div><h4>Leads that changed or need attention ('+attention.length+')</h4>'+tbl+hist;
+  const hist=days.length?('<h4>Recent daily runs</h4><table><thead><tr><th>Date</th><th>Mode</th><th>Reviewed</th><th>Follow up</th><th>Dead</th><th>Flagged</th></tr></thead><tbody>'+days.map(d=>'<tr><td>'+esc(d.date||'')+'</td><td>'+esc(d.mode||'')+'</td><td>'+(d.total||0)+'</td><td>'+(d.evaluating||0)+'</td><td>'+(d.closed||0)+'</td><td>'+(d.manualReview||0)+'</td></tr>').join('')+'</tbody></table>'):'';
+  document.getElementById('rbody').innerHTML='<div class="explain">'+explain+'</div><div class="krow"><div><div class="k">Reviewed</div><div class="kv">'+c.total+'</div></div><div><div class="k">Follow up</div><div class="kv" style="color:#16a34a">'+c.ev+'</div></div><div><div class="k">Dead</div><div class="kv" style="color:#dc2626">'+c.cl+'</div></div><div><div class="k">Under Contract</div><div class="kv" style="color:#7c3aed">'+c.uc+'</div></div><div><div class="k">Flagged</div><div class="kv" style="color:#b45309">'+c.mr+'</div></div><div><div class="k">Duplicates</div><div class="kv" style="color:#0891b2">'+c.dup+'</div></div></div><h4>Leads that changed or need attention ('+attention.length+')</h4>'+tbl+hist;
   document.getElementById('modalbg').classList.remove('hide');
 }
 function closeReport(){ document.getElementById('modalbg').classList.add('hide'); }
