@@ -110,9 +110,17 @@ const log = (m) => console.log(m);
     if (contactId) {
       const recUrl = abs(settings.urls.contactRecord.replace('{contactId}', contactId));
       await page.goto(recUrl, { waitUntil: 'domcontentloaded' }).catch(() => {});
-      await page.waitForTimeout(1500);
+      await page.waitForLoadState('networkidle').catch(() => {});
+      // Poll for the record content to render (loads via JS after the shell).
+      let ctext = '';
+      const dl = Date.now() + 12000;
+      while (Date.now() < dl) {
+        await page.waitForTimeout(1200);
+        ctext = await page.locator('body').innerText().catch(() => '');
+        if (/lead stage|call disposition|category|tags|call summary|notes|disposition|deal/i.test(ctext)) break;
+      }
       log(`\n== CONTACT RECORD: ${recUrl} ==`);
-      log((await page.locator('body').innerText().catch(() => '')).split('\n').map(s => s.trim()).filter(Boolean).slice(0, 80).join('\n'));
+      log(ctext.split('\n').map(s => s.trim()).filter(Boolean).slice(0, 120).join('\n'));
     } else {
       log('\nNo _panel_content contactId found on the contacts tab (no attached contact, or it renders differently).');
     }

@@ -72,8 +72,16 @@ class Activity {
   async collect(contactId) {
     const url = this._abs(this.settings.urls.contactRecord.replace('{contactId}', contactId));
     await this.page.goto(url, { waitUntil: 'domcontentloaded' }).catch(() => {});
-    await this.page.waitForTimeout(1200);
-    const text = await this.page.locator('body').innerText().catch(() => '');
+    await this.page.waitForLoadState('networkidle').catch(() => {});
+    // The contact record loads its detail/activity panels via JS after the
+    // shell renders — poll until real content (beyond the nav chrome) appears.
+    const deadline = Date.now() + 12000;
+    let text = '';
+    while (Date.now() < deadline) {
+      await this.page.waitForTimeout(1200);
+      text = await this.page.locator('body').innerText().catch(() => '');
+      if (/lead stage|call disposition|category|tags|call summary|notes|disposition|deal/i.test(text)) break;
+    }
     const { activities, notes } = parseActivityText(text);
     const tags = parseTags(text);
     if (this.log) this.log(`[contact ${contactId}] ${activities.length} dated activity line(s), ${notes.length} signal note(s), ${tags.length} tag(s).`);
