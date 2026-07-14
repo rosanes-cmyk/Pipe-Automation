@@ -36,10 +36,29 @@ class Pipeline {
   }
 
   /**
+   * The inbox lazy-loads rows as you scroll. Scroll to the bottom repeatedly
+   * until the row count stops growing (or a cap), so we enumerate the full
+   * bucket instead of just the first screen.
+   */
+  async loadAllRows(maxScrolls = 60) {
+    let prev = -1, stable = 0;
+    for (let i = 0; i < maxScrolls && stable < 3; i++) {
+      const c = await this._addressLinks().count().catch(() => 0);
+      if (c === prev) stable++; else { stable = 0; prev = c; }
+      await this.page.evaluate(() => window.scrollTo(0, document.body.scrollHeight)).catch(() => {});
+      await this.page.mouse.wheel(0, 30000).catch(() => {});
+      await this.page.waitForTimeout(1200);
+    }
+    this.log(`Loaded ${prev} rows after scrolling.`);
+    return prev;
+  }
+
+  /**
    * Return New-bucket leads in list order (top first), de-duplicated by id.
    * Each: { id, address, url }
    */
   async listNewLeads() {
+    await this.loadAllRows();
     const links = this._addressLinks();
     const n = await links.count().catch(() => 0);
     const seen = new Set();
