@@ -79,6 +79,14 @@ code{background:#0d1b3e;color:#e6edff;padding:1px 6px;border-radius:4px;font-fam
 <tr><td>Conflicting (dead + re-inquiry), blank stage with outreach, or "Review"</td><td><span class="tag a">Flag</span></td><td>Left unchanged + explanatory note</td></tr>
 <tr><td>Duplicate address of another record</td><td><span class="tag a">Flag</span></td><td>Note on the record (never merged/deleted)</td></tr>
 </table>
+<div class="callout warn"><b>Why "Under Contract" and "Closed-won" are held, not changed — on purpose.</b>
+These two are high-stakes (they represent live/finished deals), so the automation
+<b>does not change them automatically</b>. Instead it <b>detects</b> the lead, leaves
+the status exactly as it is, and writes a note so a team member can confirm and set
+it by hand. So if the report shows a count under "Under Contract," that means the bot
+<b>found and flagged</b> those for a person — it is working as intended, not skipping
+them. Everything else (Follow up, Dead) simply mirrors the rep's own Lead Stage and is
+set automatically.</div>
 
 <div class="pagebreak"></div>
 <h2><span class="n">4</span>Daily operating procedure</h2>
