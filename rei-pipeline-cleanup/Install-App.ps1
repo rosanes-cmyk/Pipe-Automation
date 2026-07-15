@@ -30,7 +30,8 @@ foreach ($dir in @($desktop, $startMenu)) {
   $lnk.TargetPath       = $electronExe   # launches the Electron app directly (no console window)
   $lnk.Arguments        = '"' + $root + '"'
   $lnk.WorkingDirectory = $root
-  $lnk.IconLocation     = "$env:SystemRoot\System32\imageres.dll,109"
+  $ico = Join-Path $root 'assets\icon.ico'
+  if (Test-Path $ico) { $lnk.IconLocation = $ico } else { $lnk.IconLocation = "$env:SystemRoot\System32\imageres.dll,109" }
   $lnk.Description       = 'REI BlackBook Pipeline Status Cleanup'
   $lnk.Save()
   Write-Host ("Created: " + $lnkPath)

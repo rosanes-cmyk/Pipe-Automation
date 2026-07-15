@@ -58,6 +58,7 @@ function startRun(mode, resume) {
 
 const APP = `<!doctype html><html lang="en"><head><meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/><title>Pipeline Cleanup — Console</title>
+<link rel="icon" type="image/png" href="/icon.png"/>
 <style>
 :root{--bg:#0b111b;--panel:#131c2b;--panel-2:#182234;--line:#243247;--line-2:#2d3d55;
 --ink:#eaf0f8;--ink-2:#aeb9cc;--muted:#7e8ca3;--accent:#3b82f6;--green:#22c55e;--green-2:#16a34a;--red:#ef4444;--amber:#f59e0b;--purple:#a855f7;--cyan:#38bdf8;
@@ -65,6 +66,7 @@ const APP = `<!doctype html><html lang="en"><head><meta charset="utf-8"/>
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.5}
 .app{max-width:1240px;margin:0 auto;padding:16px 26px 60px}
 .apphead{display:flex;align-items:center;gap:14px;padding:6px 2px 14px}
+.apphead .logo{width:40px;height:40px;border-radius:10px;flex:none;box-shadow:0 2px 10px rgba(0,0,0,.35)}
 .apphead .dot{width:11px;height:11px;border-radius:50%;background:var(--muted);flex:none}
 .apphead .dot.on{background:var(--green);box-shadow:0 0 0 4px rgba(34,197,94,.16)}
 .apphead h1{font-size:20px;font-weight:750;margin:0;letter-spacing:-.01em}
@@ -151,6 +153,7 @@ label.chk{display:flex;align-items:center;gap:7px;color:var(--ink-2);font-size:1
 </style></head><body><div class="app">
 
   <div class="apphead">
+    <img class="logo" src="/icon.png" alt="" width="40" height="40"/>
     <div class="dot" id="dot"></div>
     <div><h1>Pipeline Status Cleanup</h1><div class="sub">Lead Stage Automation · Twin Home Buyer / Equity Track</div></div>
     <div class="right"><span class="prog hide" id="prog"></span>
@@ -308,6 +311,11 @@ const server = http.createServer((req, res) => {
       const rows = readJson(settings.paths.reportsJson, []);
       const hist = readJson(settings.paths.dailyHistory, []);
       return send(res, 200, 'text/html', buildHtml(rows, hist, { mode: 'report', generatedAt: new Date().toISOString().replace('T', ' ').slice(0, 16) }));
+    }
+    if (url === '/icon.png' || url === '/favicon.ico') {
+      const f = path.resolve(__dirname, url === '/favicon.ico' ? 'assets/icon.ico' : 'assets/icon.png');
+      try { const buf = fs.readFileSync(f); res.writeHead(200, { 'Content-Type': url.endsWith('.ico') ? 'image/x-icon' : 'image/png', 'Cache-Control': 'max-age=86400' }); return res.end(buf); }
+      catch { return send(res, 404, 'text/plain', 'no icon'); }
     }
     if (url === '/api/status') return send(res, 200, 'application/json', JSON.stringify(state));
     if (url === '/api/latest') return send(res, 200, 'application/json', JSON.stringify(readJson(settings.paths.reportsJson, [])));

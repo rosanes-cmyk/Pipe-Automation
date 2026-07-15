@@ -8,6 +8,7 @@
  *   npm run dist    # build a Windows installer (.exe) into dist/
  */
 const { app, BrowserWindow, shell, Menu } = require('electron');
+const path = require('path');
 
 let win = null;
 
@@ -18,6 +19,7 @@ function createWindow(port) {
     minWidth: 980,
     minHeight: 640,
     title: 'Pipeline Status Cleanup',
+    icon: path.join(__dirname, 'assets', 'icon.png'),
     backgroundColor: '#0b1220',
     autoHideMenuBar: true,
     show: false,

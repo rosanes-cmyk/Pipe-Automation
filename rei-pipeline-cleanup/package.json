@@ -26,7 +26,7 @@
     "productName": "Pipeline Status Cleanup",
     "asar": false,
     "files": ["**/*", "!reports/**", "!data/**", "!logs/**", "!screenshots/**", "!.chrome-profile/**", "!dist/**"],
-    "win": { "target": ["nsis"] },
+    "win": { "target": ["nsis"], "icon": "assets/icon.ico" },
     "nsis": {
       "oneClick": false,
       "perMachine": false,
