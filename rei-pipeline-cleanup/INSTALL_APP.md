@@ -32,21 +32,26 @@ npm run app
 ```
 Same app window, handy for testing.
 
-## Build a distributable installer (.exe) — optional / advanced
+## Build a distributable installer (.exe) — to share with teammates
 
-To hand teammates a single installer they can run without Node:
+> **Do NOT share `electron.exe` by itself.** On its own it fails with
+> *"code execution cannot proceed because ffmpeg.dll was not found"* — it needs
+> its bundled runtime files. The **Setup .exe** below bundles everything
+> (Electron + ffmpeg.dll + app + dependencies) into one file teammates can
+> download and run.
+
+On a Windows PC with Node.js installed, from the project folder:
+```powershell
+powershell -ExecutionPolicy Bypass -File .\Build-Installer.ps1
+```
+or manually:
 ```powershell
 npm install
 npm run dist
 ```
-This produces `dist\Pipeline Status Cleanup Setup <version>.exe` (NSIS installer).
+This produces **`dist\Pipeline Status Cleanup Setup <version>.exe`** — a normal
+Windows installer (per-user, so it installs to a writable location and creates
+Desktop + Start Menu shortcuts). **Upload that Setup .exe** for teammates; they
+download it, run it, and the app is installed like any other program.
 
-Caveats (why this is "advanced"):
-- Must be built **on Windows**.
-- The app writes reports/logs and stores the REI login next to itself, so install
-  it somewhere writable (its default per-user location is fine; avoid
-  `C:\Program Files`). If you plan to distribute widely, those paths should be
-  moved to the per-user AppData folder first — ask and I'll wire that up.
-
-For a single office machine, the **shortcut install above is the recommended,
-reliable option**.
+First launch still needs the one-time REI login in the Chrome window it opens.

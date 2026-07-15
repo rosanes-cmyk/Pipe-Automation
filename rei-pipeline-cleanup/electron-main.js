@@ -10,6 +10,11 @@
 const { app, BrowserWindow, shell, Menu } = require('electron');
 const path = require('path');
 
+// Pin the working directory to the app folder so the dashboard server, the
+// spawned worker, reports/progress/logs and the saved REI login all resolve to
+// the same (per-user, writable) location whether run from source or installed.
+try { process.chdir(__dirname); } catch (e) { /* ignore */ }
+
 let win = null;
 
 function createWindow(port) {
