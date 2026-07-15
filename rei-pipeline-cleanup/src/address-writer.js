@@ -5,26 +5,25 @@ const { reviewAddress } = require('./address');
 /**
  * Address write-back for REI BlackBook (Edit Property Details).
  *
- * Confirmed live (property 3184299):
- *   - reveal   : an "Edit" button toggles the address section into edit mode
- *   - street   : #address      (e.g. "1217 Newbridge Ave ")
- *   - unit     : #address2
- *   - city     : #city
- *   - state    : #state  (a <select> — NEVER touched; SOP §7)
- *   - zip      : #zip_code
- *   - save     : button "Save Address Details"
+ * Confirmed live (property 3184299). The page has several independently-editable
+ * sections, each with its own "Edit" toggle and Save button, and REI renders a
+ * hidden duplicate of the address inputs — so a bare #address can resolve to the
+ * wrong copy. To stay exact we anchor on the one unique element, the
+ * "Save Address Details" button, tag the container that holds BOTH that button
+ * and the address input, and operate strictly inside that scope:
+ *   - street : [name="address"]   (e.g. "1217 Newbridge Ave ")
+ *   - city   : [name="city"]
+ *   - state  : [name="state"]  (a <select> — NEVER touched; SOP §7)
+ *   - zip    : [name="zip_code"]
+ *   - save   : button "Save Address Details"
  *
  * SAFETY MODEL — this is the one non-reversible action in the job, so:
- *   1. It only runs when settings.address.writeToRei is true AND the field
- *      selectors are set; otherwise it no-ops (the controller flags instead).
- *   2. It reads the form's OWN current values and only NORMALIZES their
- *      formatting (suffix abbreviation, casing, trailing spaces) via the
- *      unit-tested reviewAddress(). It never injects list-view text or moves
- *      data between fields, so it cannot restructure a record — worst case it
- *      leaves a field as-is.
- *   3. The State <select> is never written.
- *   4. set -> Save -> reload -> re-read -> verify each changed field stuck
- *      (same discipline as status/notes). Unverified => written:false.
+ *   1. Runs only when settings.address.writeToRei is true; else no-ops (flag).
+ *   2. Reads the record's OWN field values and only NORMALIZES their formatting
+ *      (suffix abbreviation, casing, trailing space) via unit-tested
+ *      reviewAddress(); never injects list text, never moves data between fields.
+ *   3. The State <select> and ZIP are never written.
+ *   4. set -> Save -> reload -> re-read -> verify; unverified => written:false.
  */
 class AddressWriter {
   constructor(page, settings, log) {
@@ -39,36 +38,59 @@ class AddressWriter {
     return new URL(p, this.settings.urls.base).toString();
   }
 
-  _enabled() {
-    const a = this.settings.address || {};
-    return !!a.writeToRei && !!(this.cfg.street && this.cfg.save);
+  _enabled() { return !!(this.settings.address && this.settings.address.writeToRei); }
+
+  /**
+   * Tag the container that holds the "Save Address Details" button AND an
+   * address input, so every later query is scoped to the real address form
+   * (defeats the hidden duplicate). Returns true if the scope was found.
+   */
+  async _tagScope() {
+    return await this.page.evaluate(() => {
+      document.querySelectorAll('[data-addr-scope]').forEach((e) => e.removeAttribute('data-addr-scope'));
+      const controls = [...document.querySelectorAll('button, a, input[type=button], input[type=submit]')];
+      const save = controls.find((b) => /save address details/i.test((b.innerText || b.value || '').trim()));
+      if (!save) return false;
+      let el = save;
+      for (let i = 0; i < 10 && el; i++) {
+        if (el.querySelector && el.querySelector('[name="address"]')) { el.setAttribute('data-addr-scope', '1'); return true; }
+        el = el.parentElement;
+      }
+      return false;
+    }).catch(() => false);
   }
 
-  /** Reveal the address section (click Edit buttons until the street input shows). */
+  _scope() { return this.page.locator('[data-addr-scope="1"]'); }
+  _street() { return this._scope().locator('[name="address"]').first(); }
+  _city() { return this._scope().locator('[name="city"]').first(); }
+  _save() { return this._scope().getByRole('button', { name: /save address details/i }).first(); }
+  _editBtn() { return this._scope().getByRole('button', { name: /^\s*edit\s*$/i }); }
+
+  async _ready() {
+    return (await this._street().isVisible({ timeout: 400 }).catch(() => false))
+        && (await this._save().isVisible({ timeout: 400 }).catch(() => false));
+  }
+
+  /** Put the address section into edit mode (street input + Save both visible). */
   async _reveal() {
-    const streetSel = this.cfg.street;
-    const vis = () => this.page.locator(streetSel).first().isVisible({ timeout: 800 }).catch(() => false);
-    if (await vis()) return true;
-    // Prefer a configured Edit control, then fall back to scanning Edit buttons.
-    const candidates = [];
-    if (this.cfg.editButton) candidates.push(this.page.locator(this.cfg.editButton));
-    candidates.push(this.page.locator("button.button-a.small", { hasText: /^\s*edit\s*$/i }));
-    candidates.push(this.page.locator("a, button", { hasText: /edit property details/i }));
-    for (const loc of candidates) {
+    if (!(await this._tagScope())) return false;
+    if (await this._ready()) return true;
+    // Click the Edit control(s) inside the address scope first, then any Edit.
+    const groups = [this._editBtn(), this.page.getByRole('button', { name: /^\s*edit\s*$/i })];
+    for (const loc of groups) {
       const n = await loc.count().catch(() => 0);
-      for (let i = 0; i < Math.min(n, 8); i++) {
+      for (let i = 0; i < Math.min(n, 12); i++) {
         await loc.nth(i).click().catch(() => {});
         await this.page.waitForTimeout(450);
-        if (await vis()) return true;
+        await this._tagScope(); // re-tag: DOM may have re-rendered on toggle
+        if (await this._ready()) return true;
       }
     }
-    return await vis();
+    return await this._ready();
   }
 
-  async _readField(sel) {
-    if (!sel) return '';
-    const loc = this.page.locator(sel).first();
-    if (!(await loc.isVisible({ timeout: 800 }).catch(() => false))) return '';
+  async _readVal(loc) {
+    if (!(await loc.isVisible({ timeout: 600 }).catch(() => false))) return '';
     return (await loc.inputValue().catch(() => '')) || '';
   }
 
@@ -78,7 +100,7 @@ class AddressWriter {
    */
   async tidyAndVerify(id) {
     if (!this._enabled()) {
-      return { written: false, skipped: true, detail: 'address.writeToRei off or selectors unset — flagged, not written' };
+      return { written: false, skipped: true, detail: 'address.writeToRei off — flagged, not written' };
     }
     const url = this._url(id);
     await this.page.goto(url, { waitUntil: 'domcontentloaded' }).catch(() => {});
@@ -87,42 +109,37 @@ class AddressWriter {
       return { written: false, skipped: false, detail: 'could not reveal the address edit form' };
     }
 
-    const curStreet = (await this._readField(this.cfg.street)).trim();
-    const curCity = (await this._readField(this.cfg.city)).trim();
-    const curZip = (await this._readField(this.cfg.zip)).trim();
+    const rawStreet = await this._readVal(this._street());
+    const curStreet = rawStreet.trim();
+    const curCity = (await this._readVal(this._city())).trim();
 
-    // Normalize formatting ONLY (state passed blank => never considered).
-    const r = reviewAddress({ street: curStreet, city: curCity, state: '', zip: curZip }, { tidyStreetText: true });
+    const r = reviewAddress({ street: curStreet, city: curCity, state: '', zip: '' }, { tidyStreetText: true });
     const newStreet = r.cleaned.street || curStreet;
     const newCity = r.cleaned.city || curCity;
 
-    const streetChanged = newStreet !== curStreet;
+    const streetChanged = newStreet !== curStreet || rawStreet !== rawStreet.trim();
     const cityChanged = newCity !== curCity;
-    // Also treat a raw (untrimmed) street with trailing space as a change.
-    const rawStreet = await this._readField(this.cfg.street);
-    const trailingSpace = rawStreet !== rawStreet.trim();
-
-    if (!streetChanged && !cityChanged && !trailingSpace) {
+    if (!streetChanged && !cityChanged) {
       return { written: false, skipped: true, detail: 'already clean', before: curStreet, after: curStreet };
     }
 
-    if (streetChanged || trailingSpace) await this.page.locator(this.cfg.street).first().fill(newStreet).catch(() => {});
-    if (cityChanged) await this.page.locator(this.cfg.city).first().fill(newCity).catch(() => {});
-    // State + ZIP left as-is.
+    if (streetChanged) await this._street().fill(newStreet).catch(() => {});
+    if (cityChanged) await this._city().fill(newCity).catch(() => {});
+    // State + ZIP intentionally untouched.
 
-    const save = this.page.locator(this.cfg.save);
-    if (!(await save.first().isVisible({ timeout: 2000 }).catch(() => false))) {
+    const save = this._save();
+    if (!(await save.isVisible({ timeout: 2000 }).catch(() => false))) {
       return { written: false, skipped: false, detail: 'Save Address Details button not visible' };
     }
-    await save.first().click().catch(() => {});
+    await save.click().catch(() => {});
     await this.page.waitForTimeout(1800);
 
     // Verify on reload.
     await this.page.goto(url, { waitUntil: 'domcontentloaded' }).catch(() => {});
     await this.page.waitForTimeout(1200);
     await this._reveal();
-    const gotStreet = (await this._readField(this.cfg.street)).trim();
-    const gotCity = (await this._readField(this.cfg.city)).trim();
+    const gotStreet = (await this._readVal(this._street())).trim();
+    const gotCity = (await this._readVal(this._city())).trim();
     const ok = gotStreet === newStreet && (!cityChanged || gotCity === newCity);
     return {
       written: ok, skipped: false,
