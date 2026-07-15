@@ -171,18 +171,22 @@ class Controller {
       if (!saved) this.log(`[FAILED SAVE] ${lead.address}: ${res.detail}`);
     }
 
-    // Address write-back (LIVE, gated). Only when a tidy actually changed the
-    // Street/City/ZIP and the address isn't a geocoded one-field blob. Leaves
-    // State untouched. No-ops safely (flag) until selectors are confirmed live.
-    let addressWritten = false, addressWriteDetail = '';
-    if (LIVE_MODE && addr.addressCorrected && !geocoded) {
+    // Address write-back (LIVE, gated). The writer reads the record's own
+    // Street/City fields and normalizes only their formatting (suffix/casing/
+    // trailing space), reload-verified. State + ZIP are left untouched. Skipped
+    // for geocoded one-field blobs (can't be fixed in the UI) and no-ops safely
+    // when writeToRei is off. Runs per-lead because a form's trailing space /
+    // casing isn't visible from the list view.
+    let addressWritten = false, addressWriteDetail = '', cleanedAddress = '';
+    if (LIVE_MODE && !geocoded) {
       const res = await addressWriter
-        .writeAddress(lead.id, { street: addr.cleaned.street, city: addr.cleaned.city, zip: addr.cleaned.zip })
+        .tidyAndVerify(lead.id)
         .catch((e) => ({ written: false, skipped: false, detail: e.message }));
       addressWritten = res.written;
       addressWriteDetail = res.detail;
+      if (res.written) cleanedAddress = res.after || '';
       if (!res.written && !res.skipped) addr.flags.push(`Address tidy not written: ${res.detail}`);
-      this.log(`[address] ${lead.address}: ${res.written ? 'tidied & verified' : (res.skipped ? 'skipped (gated)' : 'NOT written')} — ${res.detail}`);
+      this.log(`[address] ${lead.address}: ${res.written ? `normalized -> ${res.after}` : (res.skipped ? `skipped (${res.detail})` : 'NOT written')} — ${res.detail}`);
     }
 
     const manualReason = geocoded ? 'Geocoded one-field address (,CA,USA) — cannot fix in UI; flag.'
@@ -214,11 +218,11 @@ class Controller {
       contact_name: contactName,
       contact_verified: hasContact,
       contact_corrected: false,
-      address_corrected: addr.addressCorrected,
+      address_corrected: addressWritten || addr.addressCorrected,
       address_written: addressWritten,
-      cleaned_address: addr.addressCorrected
+      cleaned_address: cleanedAddress || (addr.addressCorrected
         ? [addr.cleaned.street, addr.cleaned.city, addr.cleaned.zip].filter(Boolean).join(', ')
-        : '',
+        : ''),
       address_write_detail: addressWriteDetail,
       state_issue: addr.stateIssue || (geocoded ? 'geocoded' : ''),
       possible_duplicate: isDupe,

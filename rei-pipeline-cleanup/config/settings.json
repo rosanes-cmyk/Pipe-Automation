@@ -42,15 +42,15 @@
   "address": {
     "tidyStreetText": true,
     "$comment_tidy": "true = tidy obvious street suffix/casing + city casing and capture the ZIP (SOP §6.5). The State field is NEVER touched. false = flag-only.",
-    "writeToRei": false,
-    "$comment_write": "false = compute + report the cleaned address only (safe default). true = also write the tidied Street/City/ZIP back into REI (Edit Property Details), reload-verified. Keep false until the edit-form selectors are confirmed live with 'node diagnose.js address <id>' and set in src/address-writer.js — writing a wrong address is the one non-reversible action, so it stays gated until verified.",
+    "writeToRei": true,
+    "$comment_write": "true = normalize the record's own Street/City formatting in the Edit Property Details form (reload-verified). Selectors confirmed live on property 3184299. The writer only cleans formatting of existing field values (never injects list text, never touches State/ZIP), so it cannot restructure a record. Set false to go back to compute-and-report only.",
     "editFormSelectors": {
-      "$comment": "Filled in from the live diagnostic. Empty = writer flags instead of writing.",
+      "$comment": "Confirmed live (property 3184299). street/city/zip are stable input ids; save is the address-section button. editButton left blank — the writer scans the section Edit buttons until #address is visible.",
       "editButton": "",
-      "street": "",
-      "city": "",
-      "zip": "",
-      "save": ""
+      "street": "#address",
+      "city": "#city",
+      "zip": "#zip_code",
+      "save": "button:has-text(\"Save Address Details\")"
     }
   },
 
