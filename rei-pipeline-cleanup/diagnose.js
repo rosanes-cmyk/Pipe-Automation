@@ -142,6 +142,43 @@ const log = (m) => console.log(m);
       }).catch(() => []);
       log('\n== "Save/Update/Submit" CANDIDATES ==\n' + (saveBtns.join('\n') || '(none)'));
 
+      // SCOPE PROBE — how does the "Save Address Details" button relate to the
+      // #address input? This is exactly what the writer needs to anchor on.
+      const probe = await page.evaluate(() => {
+        const lines = [];
+        const desc = (e) => e ? `${e.tagName.toLowerCase()}#${e.id || ''}.${(e.className || '').toString().trim().replace(/\s+/g, '.').slice(0, 50)}` : '(null)';
+        const controls = [...document.querySelectorAll('button,a,input[type=submit],input[type=button]')];
+        const save = controls.find((b) => /save address details/i.test((b.textContent || b.value || '').trim()));
+        lines.push('save button found: ' + (save ? desc(save) : 'NO'));
+        if (save) {
+          lines.push('save outerHTML: ' + save.outerHTML.slice(0, 200).replace(/\s+/g, ' '));
+          let el = save, level = 0, found = -1;
+          const chain = [];
+          while (el && level < 14) {
+            const hasAddr = !!(el.querySelector && el.querySelector('[name="address"]'));
+            chain.push(`  L${level}: ${desc(el)}${hasAddr ? '  <-- contains [name=address]' : ''}`);
+            if (hasAddr && found < 0) found = level;
+            el = el.parentElement; level++;
+          }
+          lines.push('ancestor chain from save button:');
+          lines.push(...chain);
+          lines.push('common-ancestor level with [name=address]: ' + found);
+        }
+        const addrs = [...document.querySelectorAll('[name="address"]')];
+        lines.push(`\n[name="address"] count: ${addrs.length}`);
+        addrs.forEach((a, i) => {
+          const form = a.closest('form');
+          const sf = form ? form.querySelector('input[name="save_form"]') : null;
+          lines.push(`  #${i}: ${desc(a)}  visible=${!!a.offsetParent}  form=${form ? desc(form) : '(none)'}  save_form="${sf ? sf.value : ''}"`);
+        });
+        // Edit buttons: id/onclick so we can target the address one directly.
+        const edits = controls.filter((b) => /^\s*edit\s*$/i.test((b.textContent || b.value || '').trim()));
+        lines.push(`\nEdit buttons: ${edits.length}`);
+        edits.slice(0, 8).forEach((e, i) => lines.push(`  #${i}: ${desc(e)}  onclick="${(e.getAttribute('onclick') || '').slice(0, 80)}"`));
+        return lines.join('\n');
+      }).catch((e) => 'probe error: ' + e.message);
+      log('\n== SCOPE PROBE ==\n' + probe);
+
       fs.mkdirSync(path.resolve(__dirname, 'dump'), { recursive: true });
       fs.writeFileSync(path.resolve(__dirname, 'dump/address.html'), await page.content());
       log('\nSaved full edit-form HTML -> dump/address.html');
