@@ -63,28 +63,35 @@ test('lead stage New Lead -> leave New', () => {
   assert.equal(classify(P({ leadStage: '1 New Lead' }), MS).action, 'leave_new');
 });
 
-test('dead lead stage + re-inquiry note -> manual review', () => {
+test('dead lead stage + re-inquiry note -> Closed (SOP: trust the Dead stage)', () => {
   const d = classify(P({ leadStage: 'Dead', notes: ['May 2026 re-inquiry received'] }), MS);
-  assert.equal(d.action, 'manual_review');
+  assert.equal(d.action, 'set_status');
+  assert.equal(d.recommendedStatus, 'Closed');
 });
 
-test('review disposition/stage -> manual review', () => {
+test('literal Review stage -> flagged for a human', () => {
   assert.equal(classify(P({ leadStage: 'For Review' }), MS).action, 'manual_review');
   assert.equal(classify(P({ leadStage: '', disposition: 'Needs Review' }), MS).action, 'manual_review');
 });
 
-test('outreach logged but blank Lead Stage -> manual review (borderline)', () => {
+test('outreach logged but blank Lead Stage -> Evaluating (SOP: any contact made)', () => {
   const d = classify(P({ leadStage: '', hasOutreach: true }), MS);
-  assert.equal(d.action, 'manual_review');
-  assert.match(d.reason, /blank/i);
+  assert.equal(d.action, 'set_status');
+  assert.equal(d.recommendedStatus, 'Evaluating');
+  assert.equal(d.marketStatusValue, 'Follow up');
 });
 
-test('outreach via dated activity but blank stage -> manual review', () => {
+test('activity logged but blank stage -> Evaluating', () => {
   const d = classify(P({ activities: [{ type: 'call', timestamp: '2026-07-11' }] }), MS);
-  assert.equal(d.action, 'manual_review');
+  assert.equal(d.recommendedStatus, 'Evaluating');
 });
 
-test('contact, no stage, no outreach -> leave New', () => {
+test('notes present but blank stage -> Evaluating', () => {
+  const d = classify(P({ leadStage: '', notes: ['left a voicemail'] }), MS);
+  assert.equal(d.recommendedStatus, 'Evaluating');
+});
+
+test('contact attached but zero activity -> leave New', () => {
   assert.equal(classify(P({ leadStage: '', hasOutreach: false }), MS).action, 'leave_new');
 });
 

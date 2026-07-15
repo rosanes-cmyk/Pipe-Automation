@@ -125,12 +125,8 @@ function classify(input, marketStatus) {
     return { ...base, ...holdOrSet('Closed', ms.ClosedWon, `${label} indicates a completed sale.`) };
   }
   if (signalStage === 'ClosedDead') {
-    // Dead stage that conflicts with a re-engagement note -> manual review.
-    if (matchesAny(notes, REENGAGE)) {
-      return { ...base, recommendedStatus: 'New', action: 'manual_review', marketStatusValue: null,
-        reason: `${label} indicates dead, but a re-engagement note conflicts.`,
-        note: 'Dead lead stage vs. a later re-inquiry — left as-is for manual review.', manualReviewReason: 'Dead vs. re-inquiry conflict.' };
-    }
+    // SOP: "Closed — deal closed or dead, per the note." Trust the rep's Dead
+    // stage and set Closed (the note records the reason).
     if (ms.ClosedDead) {
       return { ...base, recommendedStatus: 'Closed', action: 'set_status', marketStatusValue: ms.ClosedDead,
         reason: `${label} indicates a dead/lost lead.`,
@@ -149,18 +145,19 @@ function classify(input, marketStatus) {
       manualReviewReason: 'Marked for review in REI.' };
   }
 
-  // 3. Lead Stage blank/unrecognized, but outreach was logged -> borderline,
-  //    send to manual review (not New).
-  if (hasOutreach) {
-    return { ...base, recommendedStatus: 'New', action: 'manual_review', marketStatusValue: null,
-      reason: 'Outreach (call/text) logged but Lead Stage is blank — borderline, needs review.',
-      note: 'Outbound/inbound contact logged but no Lead Stage set. Left as-is for manual review.',
-      manualReviewReason: 'Outreach but blank Lead Stage.' };
+  // 3. No recognized Lead Stage, but there IS activity (a call/text/email/offer,
+  //    a logged activity, or notes) -> SOP: "any contact made / analysis started"
+  //    => Evaluating.
+  const hasAnyActivity = hasOutreach || activities.length > 0 || (input.notes || []).length > 0;
+  if (hasAnyActivity) {
+    return { ...base, recommendedStatus: 'Evaluating', action: 'set_status', marketStatusValue: ms.Evaluating || null,
+      reason: 'Contact/activity logged (SOP: any contact made → Evaluating), even with a blank Lead Stage.',
+      note: null, manualReviewReason: null };
   }
 
-  // 4. Contact/notes present but no stage and no outreach -> New (imported, not worked).
+  // 4. No contact activity at all -> New (imported, not worked).
   return { ...base, recommendedStatus: 'New', action: 'leave_new', marketStatusValue: null,
-    reason: input.hasContact ? 'Contact attached but no Lead Stage or outreach — correct as New.' : 'No activity — correct as New.',
+    reason: input.hasContact ? 'Contact attached but no activity — correct as New.' : 'No activity — correct as New.',
     note: null, manualReviewReason: null };
 }
 
