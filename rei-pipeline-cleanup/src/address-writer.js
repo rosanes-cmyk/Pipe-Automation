@@ -98,32 +98,48 @@ class AddressWriter {
       return { written: false, skipped: true, detail: 'already clean', before: curStreet, after: curStreet };
     }
 
-    if (streetChanged) await this.page.locator(this.sel.street).first().fill(newStreet).catch(() => {});
-    if (cityChanged) await this.page.locator(this.sel.city).first().fill(newCity).catch(() => {});
-    // State + ZIP intentionally untouched.
+    // Fill + save + reload-verify, retrying once — REI's save is an async POST
+    // and an over-eager reload can read the old value before it lands.
+    let gotStreet = curStreet, gotCity = curCity, ok = false;
+    for (let attempt = 1; attempt <= 2 && !ok; attempt++) {
+      if (attempt > 1 && !(await this._openEdit(url))) break; // re-open on retry
 
-    // Save via the button, else call the exact global handler.
-    const save = this.page.locator(this.sel.save).first();
-    if (await save.isVisible({ timeout: 2000 }).catch(() => false)) {
-      await save.click().catch(() => {});
-    } else {
+      if (streetChanged) await this._fill(this.sel.street, newStreet);
+      if (cityChanged) await this._fill(this.sel.city, newCity);
+      // State + ZIP intentionally untouched.
+
+      // Save via the button, and also call the exact global handler as backup.
+      const save = this.page.locator(this.sel.save).first();
+      if (await save.isVisible({ timeout: 2000 }).catch(() => false)) await save.click().catch(() => {});
       await this.page.evaluate(() => { if (typeof window.savePropInfo === 'function') window.savePropInfo('address_form'); }).catch(() => {});
-    }
-    await this.page.waitForTimeout(2000);
+      // Wait for the save POST to settle before reloading.
+      await this.page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {});
+      await this.page.waitForTimeout(1500);
 
-    // Verify on reload — read the saved value straight from the DOM.
-    await this.page.goto(url, { waitUntil: 'domcontentloaded' }).catch(() => {});
-    await this.page.waitForSelector(this.sel.street, { state: 'attached', timeout: 20000 }).catch(() => {});
-    await this.page.waitForTimeout(600);
-    const gotStreet = ((await this._val(this.sel.street)) || '').trim();
-    const gotCity = ((await this._val(this.sel.city)) || '').trim();
-    const ok = gotStreet === newStreet && (!cityChanged || gotCity === newCity);
+      // Verify on reload — read the saved value straight from the DOM.
+      await this.page.goto(url, { waitUntil: 'domcontentloaded' }).catch(() => {});
+      await this.page.waitForSelector(this.sel.street, { state: 'attached', timeout: 20000 }).catch(() => {});
+      await this.page.waitForTimeout(700);
+      gotStreet = ((await this._val(this.sel.street)) || '').trim();
+      gotCity = ((await this._val(this.sel.city)) || '').trim();
+      ok = gotStreet === newStreet && (!cityChanged || gotCity === newCity);
+    }
     return {
       written: ok, skipped: false,
       detail: ok ? 'address normalized & reload-verified' : `not verified (street="${gotStreet}", city="${gotCity}")`,
       before: `${curStreet}${curCity ? ', ' + curCity : ''}`,
       after: `${newStreet}${newCity ? ', ' + newCity : ''}`,
     };
+  }
+
+  /** Fill a visible field and fire input/change so REI's handler sees it. */
+  async _fill(sel, value) {
+    const loc = this.page.locator(sel).first();
+    await loc.fill(value).catch(() => {});
+    await this.page.evaluate((s) => {
+      const el = document.querySelector(s);
+      if (el) { el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); el.blur && el.blur(); }
+    }, sel).catch(() => {});
   }
 }
 

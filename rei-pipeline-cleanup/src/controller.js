@@ -219,7 +219,7 @@ class Controller {
       contact_name: contactName,
       contact_verified: hasContact,
       contact_corrected: false,
-      address_corrected: addressWritten || addr.addressCorrected,
+      address_corrected: LIVE_MODE ? addressWritten : addr.addressCorrected,
       address_written: addressWritten,
       cleaned_address: cleanedAddress || (addr.addressCorrected
         ? [addr.cleaned.street, addr.cleaned.city, addr.cleaned.zip].filter(Boolean).join(', ')
