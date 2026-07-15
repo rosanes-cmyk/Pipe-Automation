@@ -14,13 +14,20 @@ const fs = require('fs');
 const path = require('path');
 const { Controller } = require('./src/controller');
 
+// Config/selectors are READ from the app folder (read-only is fine).
+// All OUTPUTS (logs, reports, progress, screenshots, saved login) go to the
+// writable data dir — set by the desktop app; falls back to the app folder for
+// plain `node app.js` runs.
+const APP_DIR = __dirname;
+const DATA_DIR = process.env.PIPELINE_DATA_DIR || APP_DIR;
+
 function loadJson(p) {
-  return JSON.parse(fs.readFileSync(path.resolve(__dirname, p), 'utf8'));
+  return JSON.parse(fs.readFileSync(path.resolve(APP_DIR, p), 'utf8'));
 }
 
 function makeLogger(logPath) {
-  fs.mkdirSync(path.dirname(path.resolve(__dirname, logPath)), { recursive: true });
-  const stream = fs.createWriteStream(path.resolve(__dirname, logPath), { flags: 'a' });
+  fs.mkdirSync(path.dirname(path.resolve(DATA_DIR, logPath)), { recursive: true });
+  const stream = fs.createWriteStream(path.resolve(DATA_DIR, logPath), { flags: 'a' });
   return (msg) => {
     const line = `${new Date().toISOString()} ${msg}`;
     console.log(msg);

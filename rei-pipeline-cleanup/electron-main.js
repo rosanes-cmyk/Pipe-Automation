@@ -9,13 +9,22 @@
  */
 const { app, BrowserWindow, shell, Menu } = require('electron');
 const path = require('path');
-
-// Pin the working directory to the app folder so the dashboard server, the
-// spawned worker, reports/progress/logs and the saved REI login all resolve to
-// the same (per-user, writable) location whether run from source or installed.
-try { process.chdir(__dirname); } catch (e) { /* ignore */ }
+const fs = require('fs');
 
 let win = null;
+
+// All writable data (reports, logs, progress, the saved REI login) goes to a
+// per-user, always-writable folder — NEVER next to the install, which may be
+// read-only (e.g. C:\Program Files). Config/selectors are still read from the
+// app folder. This is set up before the server or worker start.
+function setupDataDir() {
+  const dataDir = app.getPath('userData'); // %APPDATA%\Pipeline Status Cleanup
+  try { fs.mkdirSync(dataDir, { recursive: true }); } catch (e) { /* ignore */ }
+  process.env.PIPELINE_DATA_DIR = dataDir;
+  process.env.PIPELINE_APP_DIR = __dirname;
+  try { process.chdir(dataDir); } catch (e) { /* ignore */ }
+  return dataDir;
+}
 
 function createWindow(port) {
   win = new BrowserWindow({
@@ -49,6 +58,7 @@ if (!app.requestSingleInstanceLock()) {
   app.on('second-instance', () => { if (win) { if (win.isMinimized()) win.restore(); win.focus(); } });
 
   app.whenReady().then(() => {
+    setupDataDir();
     const { startServer, port } = require('./serve.js');
     startServer((p) => createWindow(p || port));
     app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(port); });

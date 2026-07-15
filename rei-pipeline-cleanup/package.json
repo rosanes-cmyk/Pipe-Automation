@@ -1,6 +1,6 @@
 {
   "name": "rei-pipeline-cleanup",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "REI BlackBook Property Pipeline status cleanup automation (Node.js + Playwright)",
   "type": "commonjs",
   "main": "electron-main.js",
@@ -30,7 +30,7 @@
     "nsis": {
       "oneClick": false,
       "perMachine": false,
-      "allowToChangeInstallationDirectory": true,
+      "allowToChangeInstallationDirectory": false,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "Pipeline Status Cleanup"

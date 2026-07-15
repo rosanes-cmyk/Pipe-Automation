@@ -42,13 +42,18 @@ function fileOr(p, fallback) { try { return fs.readFileSync(path.resolve(p)); } 
 
 function startRun(mode, resume) {
   if (state.running) return false;
-  const args = ['app.js', mode === 'live' ? '--live' : '--audit'];
+  // app.js lives in the app folder (read-only when installed); outputs go to the
+  // writable data dir. Use an absolute script path + the data dir as cwd.
+  const appDir = process.env.PIPELINE_APP_DIR || __dirname;
+  const dataDir = process.env.PIPELINE_DATA_DIR || appDir;
+  const script = path.join(appDir, 'app.js');
+  const args = [script, mode === 'live' ? '--live' : '--audit'];
   if (resume) args.push('--resume');
   state.running = true; state.mode = mode; state.startedAt = new Date().toISOString(); state.finishedAt = null; state.exitCode = null; state.log = [];
-  pushLog('$ node ' + args.join(' '));
+  pushLog('$ node app.js ' + args.slice(1).join(' '));
   // ELECTRON_RUN_AS_NODE makes the Electron binary behave as plain Node when we
-  // spawn the worker, so `node app.js ...` runs correctly inside the packaged app.
-  child = spawn(process.execPath, args, { cwd: __dirname, env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' } });
+  // spawn the worker, so it runs app.js correctly inside the packaged app.
+  child = spawn(process.execPath, args, { cwd: dataDir, env: { ...process.env, ELECTRON_RUN_AS_NODE: '1', PIPELINE_DATA_DIR: dataDir, PIPELINE_APP_DIR: appDir } });
   const on = (b) => String(b).split(/\r?\n/).forEach((l) => l.trim() && pushLog(l));
   child.stdout.on('data', on); child.stderr.on('data', on);
   child.on('close', (c) => { state.running = false; state.finishedAt = new Date().toISOString(); state.exitCode = c; child = null; pushLog('--- run finished (exit ' + c + ') ---'); });
