@@ -29,6 +29,15 @@ class Notes {
     await this.page.goto(url, { waitUntil: 'domcontentloaded' }).catch(() => {});
     await this.page.waitForTimeout(1000);
 
+    // 0. Idempotency — if this exact auto-note is already on the record, don't
+    //    add it again (prevents duplicate notes on re-runs / the daily schedule).
+    const already = await this.page.evaluate((t) => {
+      const tbl = document.querySelector('#note_display_table');
+      if (!tbl) return false;
+      return tbl.innerText.replace(/\s+/g, ' ').includes(t);
+    }, tagged).catch(() => false);
+    if (already) return { written: true, skipped: true, detail: 'note already present — not duplicated' };
+
     // 1. Reveal the composer.
     const addLink = this.page.locator('a.btn.btn-link2.btn-lg', { hasText: /add note/i });
     if (await addLink.first().isVisible({ timeout: 3000 }).catch(() => false)) {

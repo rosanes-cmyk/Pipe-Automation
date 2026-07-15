@@ -200,7 +200,8 @@ class Controller {
         : (decision.note || manualReason || 'Flagged by pipeline cleanup — needs review.');
       const res = await notes.writeNote(lead.id, noteText).catch((e) => ({ written: false, detail: e.message }));
       noteWritten = res.written;
-      this.log(`[note] ${lead.address}: ${res.written ? 'written' : 'NOT written'} — ${res.detail}`);
+      const word = res.skipped ? 'already noted (skipped)' : (res.written ? 'written' : 'NOT written');
+      this.log(`[note] ${lead.address}: ${word} — ${res.detail}`);
     }
 
     if (needsManual) manualReview.push({ id: lead.id, address: lead.address, url: lead.url, reason: manualReason, noteWritten, at: nowIso() });
