@@ -1,0 +1,187 @@
+[
+  {
+    "property_id": "3184208",
+    "address": "3770 Lincoln Blvd",
+    "city": "Oakland", "state": "California", "zip_code": "94602",
+    "stage": "New",
+    "contact": {
+      "contact_id": "c-arleen", "name": "Arleen Scoggins",
+      "tags": ["Seller"],
+      "activities": [
+        {"kind": "call", "timestamp": "2026-07-11T09:15:00", "detail": "Answered, discussed price"},
+        {"kind": "text", "timestamp": "2026-07-11T14:02:00", "detail": "Follow-up text", "inbound": false}
+      ],
+      "notes": ["Wants to think it over, follow up next week"]
+    }
+  },
+  {
+    "property_id": "3180743",
+    "address": "1549 5th Avenue",
+    "city": "Oakland", "state": "California", "zip_code": "94606",
+    "stage": "New",
+    "contact": {
+      "contact_id": "c-mkding", "name": "MK Ding",
+      "tags": ["Hot"],
+      "activities": [
+        {"kind": "comps", "timestamp": "2026-07-10T11:00:00", "detail": "Comp analysis run"},
+        {"kind": "text", "timestamp": "2026-07-11T08:30:00", "detail": "Sent range"}
+      ],
+      "notes": []
+    }
+  },
+  {
+    "property_id": "3180730",
+    "address": "492 Umland Dr",
+    "city": "Union City", "state": "California", "zip_code": "",
+    "stage": "New",
+    "contact": {
+      "contact_id": "c-rob", "name": "Rob Walker",
+      "tags": ["Seller"],
+      "activities": [
+        {"kind": "comps", "timestamp": "2026-07-08T10:00:00", "detail": "Comps"},
+        {"kind": "offer", "timestamp": "2026-07-09T15:00:00", "detail": "Offer worked, Monday visit"}
+      ],
+      "notes": ["Monday site visit scheduled"]
+    }
+  },
+  {
+    "property_id": "3184203",
+    "address": "4738 London Drive",
+    "city": "", "state": "California", "zip_code": "",
+    "stage": "New",
+    "contact": {
+      "contact_id": "c-london", "name": "Unknown",
+      "tags": ["Dead Lead", "Lost Deal", "Invalid Contact Info"],
+      "activities": [
+        {"kind": "text", "timestamp": "2026-07-05T12:00:00", "detail": "Inbound: still interested?", "inbound": true}
+      ],
+      "notes": []
+    }
+  },
+  {
+    "property_id": "2972672",
+    "address": "522 Seacliff Pl",
+    "city": "Richmond", "state": "California", "zip_code": "94801",
+    "stage": "New",
+    "contact": {
+      "contact_id": "c-seacliff", "name": "Seacliff Owner",
+      "tags": ["Not Interested", "Remove From List"],
+      "activities": [
+        {"kind": "note", "timestamp": "2026-05-02T09:00:00", "detail": "Re-inquiry received"}
+      ],
+      "notes": ["Oct 2025: no further actions", "May 2026: re-inquiry — conflicting ZIP 94801 vs 94804"]
+    }
+  },
+  {
+    "property_id": "3180022",
+    "address": "138 Penhurst Court",
+    "city": "Daly City", "state": "California", "zip_code": "94015",
+    "stage": "New",
+    "contact": {
+      "contact_id": "c-penhurst", "name": "Penhurst Seller",
+      "tags": ["Seller"],
+      "activities": [
+        {"kind": "comps", "timestamp": "2026-07-10T10:00:00", "detail": "Full comp analysis"},
+        {"kind": "offer", "timestamp": "2026-07-10T16:00:00", "detail": "Offers 1.264M-1.312M"},
+        {"kind": "call", "timestamp": "2026-07-10T17:00:00", "detail": "Discussed"}
+      ],
+      "notes": ["Considering offer"]
+    }
+  },
+  {
+    "property_id": "9000001",
+    "address": "77 Contract Way",
+    "city": "Fremont", "state": "California", "zip_code": "94536",
+    "stage": "New",
+    "contact": {
+      "contact_id": "c-uc", "name": "Under Contract Seller",
+      "tags": ["Seller"],
+      "activities": [
+        {"kind": "offer", "timestamp": "2026-07-01T10:00:00", "detail": "Offer accepted"}
+      ],
+      "notes": ["Signed contract received 2026-07-02, accepted offer"]
+    }
+  },
+  {
+    "property_id": "9000002",
+    "address": "12 Closed Ln",
+    "city": "Hayward", "state": "California", "zip_code": "94541",
+    "stage": "New",
+    "contact": {
+      "contact_id": "c-closed", "name": "Closed Seller",
+      "tags": [],
+      "activities": [
+        {"kind": "call", "timestamp": "2026-06-01T10:00:00", "detail": "Final call"}
+      ],
+      "notes": ["Deal closed and funded 2026-06-15"]
+    }
+  },
+  {
+    "property_id": "9000003",
+    "address": "34 Deadend Rd",
+    "city": "San Leandro", "state": "California", "zip_code": "94577",
+    "stage": "New",
+    "contact": {
+      "contact_id": "c-dead", "name": "Dead Seller",
+      "tags": ["Dead Lead"],
+      "activities": [
+        {"kind": "call", "timestamp": "2026-06-01T10:00:00", "detail": "Spoke"}
+      ],
+      "notes": ["Seller confirmed deal is dead, no further action"]
+    }
+  },
+  {
+    "property_id": "3184126",
+    "address": "1760 Magazine St",
+    "city": "Oakland", "state": "California", "zip_code": "",
+    "stage": "New",
+    "contact": null
+  },
+  {
+    "property_id": "3184182",
+    "address": "212 Haven Ct",
+    "city": "", "state": "", "zip_code": "",
+    "stage": "New",
+    "contact": null
+  },
+  {
+    "property_id": "3180607",
+    "address": "2925 Mabel St",
+    "city": "Berkeley", "state": "California", "zip_code": "",
+    "stage": "New",
+    "contact": {
+      "contact_id": "c-mabel", "name": "Mabel Owner",
+      "tags": ["Seller"],
+      "activities": [],
+      "notes": []
+    }
+  },
+  {
+    "property_id": "3184226",
+    "address": "Mariarivera @$icloud",
+    "city": "", "state": "", "zip_code": "",
+    "stage": "New",
+    "contact": {
+      "contact_id": "c-malformed", "name": "",
+      "tags": [],
+      "activities": [
+        {"kind": "note", "timestamp": "2026-07-01T00:00:00", "detail": "malformed import"}
+      ],
+      "notes": ["Address field holds a name/email fragment; needs re-entry"]
+    }
+  },
+  {
+    "property_id": "3184025",
+    "address": "3028 Longview Rd",
+    "city": "Antioch", "state": "California", "zip_code": "94509",
+    "stage": "New",
+    "contact": {
+      "contact_id": "c-daniel", "name": "Daniel Viera",
+      "tags": ["Nurture"],
+      "activities": [
+        {"kind": "call", "timestamp": "2026-07-09T11:00:00", "detail": "Answered call (nurture)"}
+      ],
+      "notes": []
+    }
+  }
+]

@@ -1,0 +1,81 @@
+{
+  "$comment": "Runtime configuration. Safety defaults: audit-only, no writes, one lead.",
+
+  "mode": {
+    "AUDIT_MODE": true,
+    "LIVE_MODE": false,
+    "MAX_LEADS_PER_RUN": 100000,
+    "$comment_max": "No per-run cap — each run works the whole New bucket top-to-bottom until done; the daily schedule re-runs it the next day. (--max still overrides for a quick test.)"
+  },
+
+  "browser": {
+    "userDataDir": "./.chrome-profile",
+    "headless": false,
+    "slowMoMs": 30,
+    "channel": "chrome",
+    "viewport": { "width": 1440, "height": 900 },
+    "navigationTimeoutMs": 45000,
+    "actionTimeoutMs": 15000
+  },
+
+  "urls": {
+    "$comment": "Confirmed from the live app + operator notes.",
+    "base": "https://my.reiblackbook.com",
+    "login": "https://my.reiblackbook.com/",
+    "pipeline": "https://my.reiblackbook.com/properties/inbox?status_filter=New",
+    "leadSheet": "/properties/leadsheet/form/{id}",
+    "contactsTab": "/properties/details/{id}/contacts",
+    "propertyNotes": "/properties/details/{id}/communication",
+    "contactRecord": "/contacts/{contactId}",
+    "addressEdit": "/properties/details/{id}/propertyDetails"
+  },
+
+  "marketStatus": {
+    "$comment": "REI Market Status vocabulary (confirmed from the live dropdown): New, Available, Unsold, Follow up, Contract Pending, Under Contract, Sold, Rented, Outsourced, Dead, Closed, Need to mail postcard, Invalid Lead, For Rent, Pending, Property Sold, Wrong Number, Do Not Mail, Interested, Cancelled Contract, Listed in the market, Declined offer, Unresponsive, Under Contract (Dispo).",
+    "$comment_mapping": "Confirmed mapping: Evaluating='Follow up' and ClosedDead='Dead' auto-write (both backed by the rep's Lead Stage). ClosedWon=null (reserve Closed/Sold for an actual completed sale; hold). UnderContract=null (rare + high-stakes; hold for a human).",
+    "Evaluating": "Follow up",
+    "UnderContract": null,
+    "ClosedWon": null,
+    "ClosedDead": "Dead"
+  },
+
+  "address": {
+    "tidyStreetText": true,
+    "$comment_tidy": "true = tidy obvious street suffix/casing + city casing and capture the ZIP (SOP §6.5). The State field is NEVER touched. false = flag-only.",
+    "writeToRei": true,
+    "$comment_write": "true = normalize the record's own Street/City formatting in the Edit Property Details form (reload-verified). Selectors confirmed live on property 3184299. The writer only cleans formatting of existing field values (never injects list text, never touches State/ZIP), so it cannot restructure a record. Set false to go back to compute-and-report only.",
+    "editFormSelectors": {
+      "$comment": "Confirmed live (property 3184299). street/city/zip are stable input ids; save is the address-section button. editButton left blank — the writer scans the section Edit buttons until #address is visible.",
+      "editButton": "",
+      "street": "#address",
+      "city": "#city",
+      "zip": "#zip_code",
+      "save": "button:has-text(\"Save Address Details\")"
+    }
+  },
+
+  "run": {
+    "checkpointEvery": 25,
+    "maxVerifyRetries": 1,
+    "screenshotsBefore": true,
+    "screenshotsAfter": true,
+    "requireStructuredActivityForLive": true,
+    "autoWriteNotes": true,
+    "$comment_notes": "When true, a LIVE run auto-writes the explanatory note into REI for review/held/duplicate leads, so no person has to. Notes go on the property's communication/Notes tab.",
+    "$comment_activity": "When true, a LIVE run will NOT write a status based on a low-confidence (heuristic) activity read — it holds + flags instead. Audit still reports the recommendation. Set a real contact.activityItem selector to raise reads to 'structured' and enable live writes."
+  },
+
+  "paths": {
+    "reportsCsv": "./reports/pipeline-results.csv",
+    "reportsJson": "./reports/pipeline-results.json",
+    "dailyHistory": "./reports/daily-history.json",
+    "dashboardHtml": "./reports/dashboard.html",
+    "progress": "./data/progress.json",
+    "manualReview": "./data/manual-review.json",
+    "duplicates": "./data/duplicates.json",
+    "screenshotsBefore": "./screenshots/before",
+    "screenshotsAfter": "./screenshots/after",
+    "screenshotsErrors": "./screenshots/errors",
+    "log": "./logs/automation.log"
+  }
+}

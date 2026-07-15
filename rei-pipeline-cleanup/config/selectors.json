@@ -1,0 +1,39 @@
+{
+  "$comment": "Selector map. Each entry is {by, value, name?, exact?, note?, confidence}. 'by' is one of: testid | role | text | label | placeholder | css. Priority order preferred: testid > role+name > href/css. Entries marked confidence:'TODO' MUST be confirmed against the live DOM in Phase 1 before AUDIT_MODE will run — the resolver throws on a TODO selector so nothing silently guesses.",
+
+  "pipeline": {
+    "table":        { "by": "css", "value": "table", "confidence": "medium", "note": "The pipeline results table (cols: Address, City, State/Province, Created, Status, ...)." },
+    "row":          { "by": "css", "value": "table tbody tr", "confidence": "medium" },
+    "rowAddressLink": { "by": "css", "value": "td:nth-child(1) a", "confidence": "medium", "note": "Blue address link in each row." },
+    "rowStatusSelect": { "by": "css", "value": "select", "confidence": "low", "note": "Per-row Status <select>. CONFIRM exact selector; there is also a Publish/Syndicate toggle in the row." },
+    "statusFilter": { "by": "text", "value": "Status", "confidence": "low", "note": "The 'Filter By: Status' dropdown near the top; used to filter to New." },
+    "searchBox":    { "by": "placeholder", "value": "Search", "confidence": "medium" }
+  },
+
+  "property": {
+    "statusSelect":       { "by": "code", "value": "auto", "confidence": "code", "note": "Resolved in property.js by scanning <select>s for New/Follow up/Under Contract/Closed options (distinguishes it from Deal Type). No manual selector needed." },
+    "editPropertyDetails":{ "by": "text", "value": "Edit Property Details", "confidence": "high" },
+    "tabContacts":        { "by": "text", "value": "CONTACTS", "confidence": "high" },
+    "tabNotes":           { "by": "text", "value": "NOTES", "confidence": "high" },
+    "tabLeadSheet":       { "by": "text", "value": "LEAD SHEET", "confidence": "high" },
+    "tabTasks":           { "by": "text", "value": "TASKS", "confidence": "high" },
+    "addressField":       { "by": "label", "value": "Address", "confidence": "medium" },
+    "saveButton":         { "by": "code", "value": "auto", "confidence": "code", "note": "property.js clicks a visible Save button if one exists, else relies on the select's change handler; verification is by reload either way." }
+  },
+
+  "editDetails": {
+    "stateSelect":  { "by": "label", "value": "State/Province", "confidence": "medium", "note": "Dropdown offers full names only ('California'); no 'CA'. Never set it (SOP §7A)." },
+    "zipField":     { "by": "label", "value": "Zip", "confidence": "low" },
+    "cityField":    { "by": "label", "value": "City", "confidence": "low" },
+    "saveButton":   { "by": "role", "role": "button", "value": "Save", "confidence": "TODO" }
+  },
+
+  "contact": {
+    "attachedContactLink": { "by": "css", "value": "a[href*=\"/contacts/\"]", "confidence": "high", "note": "Content-based: the attached contact link on the CONTACTS tab points at /contacts/{id}." },
+    "activityItem":        { "by": "css", "value": "", "confidence": "fallback", "note": "Empty = use the code fallback in activity.js (heuristic text/time extraction). Fill with a precise selector once the contact-record DOM is confirmed to raise confidence." },
+    "callsSection":        { "by": "text", "value": "Calls", "confidence": "low" },
+    "textsSection":        { "by": "text", "value": "Texts", "confidence": "low" },
+    "emailsSection":       { "by": "text", "value": "Emails", "confidence": "low" },
+    "notesSection":        { "by": "text", "value": "Notes", "confidence": "low" }
+  }
+}
