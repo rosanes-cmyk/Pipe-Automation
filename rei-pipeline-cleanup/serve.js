@@ -32,7 +32,7 @@ function lanIp() {
 }
 const shareUrl = `http://${lanIp()}:${port}`;
 
-const state = { running: false, mode: null, startedAt: null, exitCode: null, log: [] };
+const state = { running: false, mode: null, startedAt: null, finishedAt: null, exitCode: null, log: [] };
 let child = null;
 const pushLog = (l) => { state.log.push(l); if (state.log.length > 400) state.log.shift(); };
 
@@ -44,13 +44,13 @@ function startRun(mode, resume) {
   if (state.running) return false;
   const args = ['app.js', mode === 'live' ? '--live' : '--audit'];
   if (resume) args.push('--resume');
-  state.running = true; state.mode = mode; state.startedAt = new Date().toISOString(); state.exitCode = null; state.log = [];
+  state.running = true; state.mode = mode; state.startedAt = new Date().toISOString(); state.finishedAt = null; state.exitCode = null; state.log = [];
   pushLog('$ node ' + args.join(' '));
   child = spawn(process.execPath, args, { cwd: __dirname });
   const on = (b) => String(b).split(/\r?\n/).forEach((l) => l.trim() && pushLog(l));
   child.stdout.on('data', on); child.stderr.on('data', on);
-  child.on('close', (c) => { state.running = false; state.exitCode = c; child = null; pushLog('--- run finished (exit ' + c + ') ---'); });
-  child.on('error', (e) => { state.running = false; child = null; pushLog('ERROR: ' + e.message); });
+  child.on('close', (c) => { state.running = false; state.finishedAt = new Date().toISOString(); state.exitCode = c; child = null; pushLog('--- run finished (exit ' + c + ') ---'); });
+  child.on('error', (e) => { state.running = false; state.finishedAt = new Date().toISOString(); child = null; pushLog('ERROR: ' + e.message); });
   return true;
 }
 
@@ -143,12 +143,16 @@ label.chk{display:flex;align-items:center;gap:7px;color:var(--ink-2);font-size:1
 .modal .btn.ghost{background:#eef2f8;color:#141c2e}
 @media print{@page{margin:16mm}body *{visibility:hidden!important}.modal-bg,.modal-bg *{visibility:visible!important}.modal-bg{position:absolute;inset:0;background:#fff;padding:0;display:block}.modal{box-shadow:none;max-width:100%;padding:0}.noprint{display:none!important}.modal tbody tr:nth-child(even){background:#fff}}
 .hide{display:none}
+.clock{display:flex;align-items:center;gap:7px;font-size:14px;font-weight:750;color:var(--ink);background:var(--panel);border:1px solid var(--line-2);border-radius:999px;padding:6px 14px;font-variant-numeric:tabular-nums;letter-spacing:.02em}
+.clock.run{border-color:rgba(34,197,94,.4);color:#e8fff1}
+.clock .cl{font-size:12px;color:var(--muted);font-weight:700}
 </style></head><body><div class="app">
 
   <div class="apphead">
     <div class="dot" id="dot"></div>
     <div><h1>Pipeline Status Cleanup</h1><div class="sub">Lead Stage Automation · Twin Home Buyer / Equity Track</div></div>
     <div class="right"><span class="prog hide" id="prog"></span>
+      <div class="clock" id="clock" title="How long the automation has been running"><span>⏱</span><span id="clocktime">00:00:00</span><span class="cl" id="clocklab"></span></div>
       <div class="status" id="status"><span class="s"></span><span id="statustext">Idle</span></div></div>
   </div>
 
@@ -207,6 +211,15 @@ label.chk{display:flex;align-items:center;gap:7px;color:var(--ink-2);font-size:1
 </div>
 <script>
 let live=false, wasRunning=false, ROWS=[];
+// Elapsed-time clock: track the current/last run's start & finish.
+var clk={start:null, finish:null, running:false};
+function fmtDur(ms){if(ms<0)ms=0;var s=Math.floor(ms/1000);var h=Math.floor(s/3600);var m=Math.floor((s%3600)/60);var ss=s%60;var p=function(n){return(n<10?'0':'')+n;};return p(h)+':'+p(m)+':'+p(ss);}
+function tickClock(){var el=document.getElementById('clock'),tt=document.getElementById('clocktime'),lab=document.getElementById('clocklab');if(!el)return;
+  if(!clk.start){tt.textContent='00:00:00';lab.textContent='not started';el.classList.remove('run');return;}
+  var end=clk.running?Date.now():(clk.finish||Date.now());var ms=end-clk.start;tt.textContent=fmtDur(ms);
+  var hrs=ms/3600000;var hlabel=hrs>=1?(hrs.toFixed(1)+' hrs'):(Math.round(ms/60000)+' min');
+  lab.textContent=clk.running?('running · '+hlabel):('last run · '+hlabel);el.classList.toggle('run',clk.running);}
+setInterval(tickClock,1000);
 function esc(v){return String(v==null?'':v).replace(/[<&>"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));}
 function stClass(st){return st==='Evaluating'?'ev':st==='Closed'?'cl':st==='Under Contract'?'uc':'nw';}
 function setMode(l){ live=l; document.getElementById('mAudit').className=live?'':'on'; document.getElementById('mLive').className=live?'on liveon':''; }
@@ -272,6 +285,11 @@ async function poll(){
     const log=document.getElementById('log'); if(s.log&&s.log.length){log.textContent=s.log.join('\\n');log.scrollTop=log.scrollHeight;}
     if(wasRunning&&!s.running){ loadStats(); }
     wasRunning=s.running;
+    // Feed the elapsed-time clock.
+    clk.start=s.startedAt?Date.parse(s.startedAt):null;
+    clk.finish=s.finishedAt?Date.parse(s.finishedAt):null;
+    clk.running=!!s.running;
+    tickClock();
   }catch(e){}
   setTimeout(poll,2000);
 }
