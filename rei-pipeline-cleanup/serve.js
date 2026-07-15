@@ -46,7 +46,9 @@ function startRun(mode, resume) {
   if (resume) args.push('--resume');
   state.running = true; state.mode = mode; state.startedAt = new Date().toISOString(); state.finishedAt = null; state.exitCode = null; state.log = [];
   pushLog('$ node ' + args.join(' '));
-  child = spawn(process.execPath, args, { cwd: __dirname });
+  // ELECTRON_RUN_AS_NODE makes the Electron binary behave as plain Node when we
+  // spawn the worker, so `node app.js ...` runs correctly inside the packaged app.
+  child = spawn(process.execPath, args, { cwd: __dirname, env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' } });
   const on = (b) => String(b).split(/\r?\n/).forEach((l) => l.trim() && pushLog(l));
   child.stdout.on('data', on); child.stderr.on('data', on);
   child.on('close', (c) => { state.running = false; state.finishedAt = new Date().toISOString(); state.exitCode = c; child = null; pushLog('--- run finished (exit ' + c + ') ---'); });
@@ -323,9 +325,19 @@ const server = http.createServer((req, res) => {
 });
 
 // Bind to 0.0.0.0 so teammates on the same Wi-Fi/LAN can open the dashboard.
-server.listen(port, '0.0.0.0', () => {
-  console.log('Pipeline Cleanup console running:');
-  console.log('  This computer:      http://localhost:' + port);
-  console.log('  Share on this WiFi: ' + shareUrl + '   (open on a teammate\'s browser)');
-  console.log('Set options and click Start. Ctrl+C to stop.');
-});
+function startServer(cb) {
+  server.listen(port, '0.0.0.0', () => {
+    console.log('Pipeline Cleanup console running:');
+    console.log('  This computer:      http://localhost:' + port);
+    console.log('  Share on this WiFi: ' + shareUrl + '   (open on a teammate\'s browser)');
+    console.log('Set options and click Start. Ctrl+C to stop.');
+    if (typeof cb === 'function') cb(port);
+  });
+  return server;
+}
+
+// Run standalone (node serve.js) => start listening. When required by the
+// Electron app, it calls startServer() itself after the window is ready.
+if (require.main === module) startServer();
+
+module.exports = { startServer, server, port, shareUrl };

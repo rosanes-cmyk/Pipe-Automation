@@ -3,8 +3,11 @@
   "version": "0.1.0",
   "description": "REI BlackBook Property Pipeline status cleanup automation (Node.js + Playwright)",
   "type": "commonjs",
+  "main": "electron-main.js",
   "engines": { "node": ">=18" },
   "scripts": {
+    "app": "electron .",
+    "dist": "electron-builder --win nsis",
     "audit": "node app.js --audit",
     "live": "node app.js --live",
     "dashboard": "node dashboard.js",
@@ -13,5 +16,24 @@
   },
   "dependencies": {
     "playwright": "^1.44.0"
+  },
+  "devDependencies": {
+    "electron": "^30.0.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.twinhomebuyer.pipelinecleanup",
+    "productName": "Pipeline Status Cleanup",
+    "asar": false,
+    "files": ["**/*", "!reports/**", "!data/**", "!logs/**", "!screenshots/**", "!.chrome-profile/**", "!dist/**"],
+    "win": { "target": ["nsis"] },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Pipeline Status Cleanup"
+    }
   }
 }

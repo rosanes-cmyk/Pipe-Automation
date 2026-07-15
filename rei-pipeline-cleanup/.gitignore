@@ -1,4 +1,5 @@
 node_modules/
+dist/
 .chrome-profile/
 reports/*.csv
 reports/*.json
