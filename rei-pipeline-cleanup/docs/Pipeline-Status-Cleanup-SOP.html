@@ -122,7 +122,7 @@ code{background:#0d1b3e;color:#e6edff;padding:1px 6px;border-radius:4px;font-fam
 
 <h2><span class="n">8</span>Limitations &amp; safety</h2>
 <ul>
-<li><b>State field is never changed</b> — REI only offers full state names, so "CA" normalization is out of scope (a separate CSV/API task).</li>
+<li><b>State field is never changed — "CA" cannot be set in the app.</b> REI's State dropdown only stores full names ("California"); there is no "CA" option, so the browser automation cannot produce the "CA" abbreviation. Storing literal "CA" (and filling blank states) requires the <b>REI BlackBook API</b> — a separate one-time pass, outside this app. Until then, the State field is left exactly as-is.</li>
 <li><b>Addresses on leads with a contact</b> can't be re-formatted in the UI (REI reverts them) — these are flagged for a later CSV/API pass. Leads without a contact are cleaned normally.</li>
 <li><b>Duplicates are flagged, never merged or deleted</b> — a person makes the final merge decision.</li>
 <li><b>Closed covers dead and sold</b> — both use the "Closed" status; the reason (dead / lost / sold) is written in a note on each lead.</li>
@@ -144,7 +144,27 @@ code{background:#0d1b3e;color:#e6edff;padding:1px 6px;border-radius:4px;font-fam
 <li><b>Setup on a new PC:</b> see <code>SETUP_NEW_PC.md</code> and <code>INSTALL_APP.md</code> in the project folder.</li>
 <li><b>Runtime download (Electron):</b> drive.google.com/file/d/1UnPcxGhwXqUicldBkuAyP1ygsNOZrbTr/view</li>
 </ul>
-<div class="callout warn"><b>Note on the download:</b> the file above is the Electron <i>runtime</i> only — it must sit inside the set-up project folder to work; it is not a standalone installer on its own. To hand teammates a true one-click installer, a packaged setup .exe should be built (electron-builder) — ask the developer to provide it.</div>
+<div class="callout warn"><b>Do NOT share <code>electron.exe</code> by itself.</b> On its own it fails with <i>"code execution cannot proceed because ffmpeg.dll was not found"</i> — it is only the runtime. Share the packaged <b>Setup .exe</b> built in the next section instead.</div>
+
+<div class="pagebreak"></div>
+<h2><span class="n">11</span>Rebuild the app &amp; share it online with teammates</h2>
+<p>This produces a single <b>Setup installer</b> that bundles everything (app + Electron + ffmpeg.dll + dependencies). Teammates download that one file, run it, and the app installs like any normal program.</p>
+<h3>Build the installer (on a Windows PC with Node.js)</h3>
+<ol class="steps">
+<li>Open PowerShell in the project folder:<br/><code>cd C:\Users\&lt;you&gt;\Documents\Pipe-Automation\rei-pipeline-cleanup</code></li>
+<li>Get the latest code:<br/><code>git pull origin claude/pipeline-status-cleanup-test-61hwcr</code></li>
+<li>Run the one-command builder:<br/><code>powershell -ExecutionPolicy Bypass -File .\Build-Installer.ps1</code><br/>(or manually: <code>npm install</code> then <code>npm run dist</code>)</li>
+<li>When it finishes, the installer is in the <b>dist</b> folder:<br/><code>dist\Pipeline Status Cleanup Setup 0.1.0.exe</code></li>
+</ol>
+<h3>Share it online</h3>
+<ol class="steps">
+<li>Upload that <b>Setup .exe</b> to Google Drive (or your shared drive).</li>
+<li>Right-click the file → <b>Share</b> → set "Anyone with the link" → <b>Copy link</b>.</li>
+<li>Send teammates the link. They download it, double-click, and install.</li>
+<li>On first launch each person logs into REI once in the Chrome window it opens.</li>
+</ol>
+<div class="callout warn"><b>Rebuild whenever the app changes.</b> The Setup .exe is a snapshot. After any code update, <code>git pull</code> and run the builder again, then re-upload the new Setup .exe (delete the old one so no one installs a stale version).</div>
+<div class="callout"><b>Note:</b> the installer must be built on <b>Windows</b>, and the build needs internet the first time (it downloads packaging tools). Each teammate still does the one-time REI login on their own machine — the app automates <i>your</i> logged-in REI session per PC; it cannot log in for them.</div>
 
 <div class="foot">Twin Home Buyer / Equity Track — Internal SOP. Pipeline Status Cleanup automation. Every change made by this tool is reversible; the State field is never modified.</div>
 
