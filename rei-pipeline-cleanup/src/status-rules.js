@@ -107,10 +107,21 @@ function classify(input, marketStatus) {
     return { ...base, recommendedStatus: 'Evaluating', action: 'set_status', marketStatusValue: ms.Evaluating || null,
       reason: `${label} indicates an active/worked lead.`, note: null, manualReviewReason: null };
   }
+  const stageText = input.leadStage || input.disposition || '';
   if (signalStage === 'UnderContract') {
+    if (ms.UnderContract) {
+      return { ...base, recommendedStatus: 'Under Contract', action: 'set_status', marketStatusValue: ms.UnderContract,
+        reason: `${label} indicates under contract.`,
+        note: `Set to Under Contract — signed contract / accepted offer (Lead Stage: ${stageText}).`, manualReviewReason: null };
+    }
     return { ...base, ...holdOrSet('Under Contract', ms.UnderContract, `${label} indicates under contract.`) };
   }
   if (signalStage === 'ClosedWon') {
+    if (ms.ClosedWon) {
+      return { ...base, recommendedStatus: 'Closed', action: 'set_status', marketStatusValue: ms.ClosedWon,
+        reason: `${label} indicates a completed sale.`,
+        note: `Closed — property sold / deal completed (Lead Stage: ${stageText}).`, manualReviewReason: null };
+    }
     return { ...base, ...holdOrSet('Closed', ms.ClosedWon, `${label} indicates a completed sale.`) };
   }
   if (signalStage === 'ClosedDead') {
@@ -119,6 +130,11 @@ function classify(input, marketStatus) {
       return { ...base, recommendedStatus: 'New', action: 'manual_review', marketStatusValue: null,
         reason: `${label} indicates dead, but a re-engagement note conflicts.`,
         note: 'Dead lead stage vs. a later re-inquiry — left as-is for manual review.', manualReviewReason: 'Dead vs. re-inquiry conflict.' };
+    }
+    if (ms.ClosedDead) {
+      return { ...base, recommendedStatus: 'Closed', action: 'set_status', marketStatusValue: ms.ClosedDead,
+        reason: `${label} indicates a dead/lost lead.`,
+        note: `Closed — dead / lost / not moving forward (Lead Stage: ${stageText}).`, manualReviewReason: null };
     }
     return { ...base, ...holdOrSet('Closed', ms.ClosedDead, `${label} indicates a dead/lost lead.`) };
   }

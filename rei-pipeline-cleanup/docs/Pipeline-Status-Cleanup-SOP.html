@@ -48,8 +48,8 @@ code{background:#0d1b3e;color:#e6edff;padding:1px 6px;border-radius:4px;font-fam
 <p>The Pipeline Status Cleanup app goes through the <b>"New" bucket</b> of the REI BlackBook Property Pipeline and sets each lead's correct status based on the rep's own work — so the pipeline reflects reality instead of everything sitting on "New."</p>
 <ul>
 <li>Reads each lead's <b>attached contact</b> (the rep's Lead Stage / Call Disposition) — it follows the rep's categorization, it does not guess.</li>
-<li>Sets worked leads to <b>Follow up</b> and lost/invalid leads to <b>Dead</b>.</li>
-<li><b>Holds</b> Under-Contract and Closed-won leads for a person (never auto-changed) and writes a note.</li>
+<li>Sets each lead to one of four pipeline stages — <b>New</b>, <b>Evaluating</b>, <b>Under Contract</b>, or <b>Closed</b> — fully automatically (no human step).</li>
+<li><b>Closed</b> is used for both dead/lost and sold leads, and the bot writes a <b>note explaining why</b> it was closed.</li>
 <li><b>Flags</b> conflicting or unclear leads and <b>duplicates</b> with an explanatory note.</li>
 <li>Cleans obvious <b>address</b> formatting (Street / City / ZIP). The <b>State field is never touched</b>.</li>
 <li>Everything it does is <b>reversible</b> and <b>reload-verified</b> (it confirms each change actually saved).</li>
@@ -62,31 +62,23 @@ code{background:#0d1b3e;color:#e6edff;padding:1px 6px;border-radius:4px;font-fam
 <li>For each lead, open its <b>attached contact</b> and read the latest Lead Stage / disposition and activity.</li>
 <li>Decide the correct status from that signal (see the rules in section 3).</li>
 <li>Write the status, then <b>reload and verify</b> it stuck (retry if not).</li>
-<li>Write an explanatory <b>note</b> for held / flagged / duplicate leads (skips if the same note already exists).</li>
+<li>Write an explanatory <b>note</b> — why a lead was Closed (dead/sold) or put Under Contract, and for flagged / duplicate leads (skips if the same note already exists).</li>
 <li>Tidy the address formatting where safe; leave the State field alone.</li>
 <li>Save progress (checkpoint) and move to the next lead.</li>
 </ol>
 <div class="callout safe"><b>Safe &amp; resumable.</b> If the connection drops or the app is closed, it picks up where it left off — no lead is lost or double-processed.</div>
 
-<h2><span class="n">3</span>Decision rules (from the rep's Lead Stage)</h2>
+<h2><span class="n">3</span>The four pipeline stages</h2>
+<p>Every lead is set to one of four stages, taken from the rep's own Lead Stage — fully automatic, no human step:</p>
 <table>
-<tr><th>When the contact shows…</th><th>Action</th><th>Result in REI</th></tr>
-<tr><td>No attached contact / not worked</td><td><span class="tag b">Leave</span></td><td>Stays "New"</td></tr>
-<tr><td>Worked — Follow up, Interested, Made an offer, Warm, Contacted, Negotiating…</td><td><span class="tag g">Set</span></td><td>Market Status → <b>Follow up</b></td></tr>
-<tr><td>Lost / Dead / Invalid / Wrong number / Not interested / DNC / We passed…</td><td><span class="tag r">Set</span></td><td>Market Status → <b>Dead</b></td></tr>
-<tr><td>Under Contract / accepted offer / in escrow</td><td><span class="tag a">Hold</span></td><td>Left unchanged + note (person confirms)</td></tr>
-<tr><td>Closed-won / a real completed sale</td><td><span class="tag a">Hold</span></td><td>Left unchanged + note (person confirms)</td></tr>
-<tr><td>Conflicting (dead + re-inquiry), blank stage with outreach, or "Review"</td><td><span class="tag a">Flag</span></td><td>Left unchanged + explanatory note</td></tr>
-<tr><td>Duplicate address of another record</td><td><span class="tag a">Flag</span></td><td>Note on the record (never merged/deleted)</td></tr>
+<tr><th>Stage</th><th>When the attached contact shows…</th><th>What the bot does</th></tr>
+<tr><td><b>New</b> (leave)</td><td>No notes and no contact — nobody has touched the lead</td><td>Left as-is</td></tr>
+<tr><td><b>Evaluating</b></td><td>Any contact made / analysis started — called, texted, emailed, offer being worked, comps run</td><td><span class="tag g">Set</span> Market Status → <b>Follow up</b></td></tr>
+<tr><td><b>Under Contract</b></td><td>A signed contract / accepted offer is noted</td><td><span class="tag b">Set</span> Market Status → <b>Under Contract</b></td></tr>
+<tr><td><b>Closed</b></td><td>Deal closed <b>or</b> dead — per the note</td><td><span class="tag r">Set</span> Market Status → <b>Closed</b> + a note saying why (dead / lost / sold)</td></tr>
 </table>
-<div class="callout warn"><b>Why "Under Contract" and "Closed-won" are held, not changed — on purpose.</b>
-These two are high-stakes (they represent live/finished deals), so the automation
-<b>does not change them automatically</b>. Instead it <b>detects</b> the lead, leaves
-the status exactly as it is, and writes a note so a team member can confirm and set
-it by hand. So if the report shows a count under "Under Contract," that means the bot
-<b>found and flagged</b> those for a person — it is working as intended, not skipping
-them. Everything else (Follow up, Dead) simply mirrors the rep's own Lead Stage and is
-set automatically.</div>
+<div class="callout"><b>Also handled automatically:</b> <b>Duplicates</b> (same address) are flagged with a note — never merged or deleted. <b>Conflicting or unclear</b> leads (e.g. a dead stage plus a later re-inquiry, or outreach logged with no Lead Stage) are left unchanged and flagged with an explanatory note for a person to look at.</div>
+<div class="callout safe"><b>Closed = dead OR sold.</b> Both land in the Closed stage; the automation writes a note on each one stating the reason, so you can tell a dead lead from a sold property at a glance.</div>
 
 <div class="pagebreak"></div>
 <h2><span class="n">4</span>Daily operating procedure</h2>
@@ -133,8 +125,8 @@ set automatically.</div>
 <li><b>State field is never changed</b> — REI only offers full state names, so "CA" normalization is out of scope (a separate CSV/API task).</li>
 <li><b>Addresses on leads with a contact</b> can't be re-formatted in the UI (REI reverts them) — these are flagged for a later CSV/API pass. Leads without a contact are cleaned normally.</li>
 <li><b>Duplicates are flagged, never merged or deleted</b> — a person makes the final merge decision.</li>
-<li><b>Under Contract / Closed-won are never auto-changed</b> — held for a person.</li>
-<li>Everything is <b>reversible</b> and every write is <b>reload-verified</b>.</li>
+<li><b>Closed covers dead and sold</b> — both use the "Closed" status; the reason (dead / lost / sold) is written in a note on each lead.</li>
+<li>Everything is <b>reversible</b> and every write is <b>reload-verified</b> (each change is confirmed after a reload; it retries if it didn't stick).</li>
 </ul>
 
 <h2><span class="n">9</span>Troubleshooting</h2>

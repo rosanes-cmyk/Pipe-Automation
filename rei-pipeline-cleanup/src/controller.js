@@ -196,9 +196,12 @@ class Controller {
     const manualReason = geocoded ? 'Geocoded one-field address (,CA,USA) — cannot fix in UI; flag.'
       : (decision.manualReviewReason || (isDupe ? 'possible duplicate' : ''));
 
-    // Auto-write the note into REI for review/held/duplicate leads (no person needed).
+    // Auto-write the note into REI (no person needed): for flagged/duplicate
+    // leads, AND for auto-set Closed / Under Contract leads so the record says
+    // WHY it was closed (dead vs sold) or put under contract.
     let noteWritten = false;
-    if (LIVE_MODE && needsManual && this.settings.run.autoWriteNotes) {
+    const wantNote = needsManual || !!decision.note;
+    if (LIVE_MODE && wantNote && this.settings.run.autoWriteNotes) {
       const noteText = isDupe
         ? `Possible duplicate of another pipeline record (same address). ${decision.note || ''}`.trim()
         : (decision.note || manualReason || 'Flagged by pipeline cleanup — needs review.');

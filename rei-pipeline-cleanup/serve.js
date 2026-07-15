@@ -189,8 +189,8 @@ label.chk{display:flex;align-items:center;gap:7px;color:var(--ink-2);font-size:1
     · runs the whole bucket top-to-bottom; a Chrome window opens on Start — log into REI there once.</div>
 
   <details class="info"><summary>How it decides — from the rep's Lead Stage (no guessing)</summary>
-    <div class="body"><b>Follow up</b> — worked lead → sets Evaluating. &nbsp;<b>Dead</b> — Lost / Invalid / Wrong number → sets Dead.<br/>
-    <b>Under Contract</b>, conflicts &amp; flagged → held + an explanatory note is written automatically. &nbsp;<b>New</b> — not worked → left as-is. Address is tidied (street/city/ZIP); the State field is never touched; everything is reversible.</div>
+    <div class="body"><b>Evaluating</b> — any contact/activity → sets Market Status "Follow up". &nbsp;<b>Under Contract</b> — signed contract / accepted offer → sets "Under Contract". &nbsp;<b>Closed</b> — dead/lost OR sold → sets "Closed" with a note saying which.<br/>
+    <b>New</b> — not worked → left as-is. Conflicting/unclear leads &amp; duplicates are flagged with a note. Address is tidied (street/city/ZIP); the State field is never touched; everything is reversible.</div>
   </details>
 
   <p class="hinttxt">▸ Click any card to see those leads with links into REI.</p>
@@ -238,7 +238,7 @@ async function startRun(resume){
   poll();
 }
 async function stopRun(){ await fetch('/api/stop',{method:'POST'}); }
-const CATS={all:'All reviewed',ev:'Follow up',cl:'Dead',uc:'Under Contract',mr:'Flagged',dup:'Duplicates'};
+const CATS={all:'All reviewed',ev:'Evaluating',cl:'Closed',uc:'Under Contract',mr:'Flagged',dup:'Duplicates'};
 function catMatch(cat,r){return cat==='all'?true:cat==='ev'?r.recommended_status==='Evaluating':cat==='cl'?r.recommended_status==='Closed':cat==='uc'?r.recommended_status==='Under Contract':cat==='mr'?!!r.manual_review_required:cat==='dup'?!!r.possible_duplicate:false;}
 function showCat(cat){
   const list=ROWS.filter(r=>catMatch(cat,r));
@@ -258,7 +258,7 @@ async function loadStats(){
     const c={total:ROWS.length,ev:0,cl:0,uc:0,mr:0,dup:0};
     ROWS.forEach(r=>{ if(r.recommended_status==='Evaluating')c.ev++; else if(r.recommended_status==='Closed')c.cl++; else if(r.recommended_status==='Under Contract')c.uc++; if(r.manual_review_required)c.mr++; if(r.possible_duplicate)c.dup++; });
     document.getElementById('firstrun').classList.toggle('hide', ROWS.length>0);
-    const cards=[['TOTAL REVIEWED',c.total,'n-white','','all'],['FOLLOW UP',c.ev,'n-green','','ev'],['DEAD',c.cl,'n-red','','cl'],['UNDER CONTRACT',c.uc,'n-purple','','uc'],['FLAGGED',c.mr,'n-amber','','mr'],['DUPLICATES',c.dup,'n-cyan','hl','dup']];
+    const cards=[['TOTAL REVIEWED',c.total,'n-white','','all'],['EVALUATING',c.ev,'n-green','','ev'],['UNDER CONTRACT',c.uc,'n-purple','','uc'],['CLOSED',c.cl,'n-red','','cl'],['FLAGGED',c.mr,'n-amber','','mr'],['DUPLICATES',c.dup,'n-cyan','hl','dup']];
     document.getElementById('stats').innerHTML=cards.map(x=>'<div class="stat '+x[3]+'" onclick="showCat(\\''+x[4]+'\\')"><div class="num '+x[2]+'">'+x[1]+'</div><div class="lab">'+x[0]+'</div></div>').join('');
   }catch(e){}
 }
@@ -268,10 +268,10 @@ async function openReport(){
   rows.forEach(r=>{const s=r.recommended_status; if(s==='Evaluating')c.ev++; else if(s==='Closed')c.cl++; else if(s==='Under Contract')c.uc++; else c.new++; if(r.manual_review_required)c.mr++; if(r.possible_duplicate)c.dup++;});
   const today=new Date().toISOString().slice(0,10);
   document.getElementById('rdate').textContent='Twin Home Buyer · REI BlackBook · '+today;
-  const explain='Today the automation reviewed <b>'+c.total+'</b> leads from the New pipeline. It set <b>'+c.ev+'</b> to <b>Follow up</b> and <b>'+c.cl+'</b> to <b>Dead</b> (both from the rep\\'s own Lead Stage), held <b>'+c.uc+'</b> Under-Contract lead(s) for a person, and flagged <b>'+c.mr+'</b>'+(c.dup?(' plus <b>'+c.dup+'</b> duplicate(s)'):'')+'. The remaining <b>'+c.new+'</b> had no contact/activity and were left as New. Every change is reversible; the State field was never touched.';
+  const explain='Today the automation reviewed <b>'+c.total+'</b> leads from the New pipeline (from each rep\\'s own Lead Stage). It set <b>'+c.ev+'</b> to <b>Evaluating</b>, <b>'+c.uc+'</b> to <b>Under Contract</b>, and <b>'+c.cl+'</b> to <b>Closed</b> (dead or sold — each with a note saying which), and flagged <b>'+c.mr+'</b>'+(c.dup?(' plus <b>'+c.dup+'</b> duplicate(s)'):'')+'. The remaining <b>'+c.new+'</b> had no contact/activity and were left as New. Every change is reversible; the State field was never touched.';
   const kc=(k,v,col)=>'<div class="kcell"><div class="k">'+k+'</div><div class="kv"'+(col?' style="color:'+col+'"':'')+'>'+v+'</div></div>';
   document.getElementById('rbody').innerHTML='<div class="explain">'+explain+'</div><div class="krow">'+
-    kc('Reviewed',c.total)+kc('Follow up',c.ev,'#16a34a')+kc('Dead',c.cl,'#dc2626')+kc('Under Contract',c.uc,'#7c3aed')+kc('Flagged',c.mr,'#b45309')+kc('Duplicates',c.dup,'#0891b2')+
+    kc('Reviewed',c.total)+kc('Evaluating',c.ev,'#16a34a')+kc('Under Contract',c.uc,'#7c3aed')+kc('Closed',c.cl,'#dc2626')+kc('Flagged',c.mr,'#b45309')+kc('Duplicates',c.dup,'#0891b2')+
     '</div>';
   document.getElementById('modalbg').classList.remove('hide');
 }

@@ -111,13 +111,13 @@ function buildHtml(rows, history, meta = {}) {
 
   const SEG = [
     { label: 'Left New', key: 'leftNew', color: 'var(--new)', desc: 'un-worked / no contact' },
-    { label: 'Follow up', key: 'evaluating', color: 'var(--eval)', desc: 'active lead → Evaluating' },
-    { label: 'Dead', key: 'closed', color: 'var(--dead)', desc: 'lost / dead → Closed' },
-    { label: 'Under Contract', key: 'underContract', color: 'var(--uc)', desc: 'held for a human' },
+    { label: 'Evaluating', key: 'evaluating', color: 'var(--eval)', desc: 'any activity → Evaluating' },
+    { label: 'Under Contract', key: 'underContract', color: 'var(--uc)', desc: 'signed/accepted → set' },
+    { label: 'Closed', key: 'closed', color: 'var(--dead)', desc: 'dead or sold → Closed + note' },
   ];
 
   const lede = `<b>${meta.mode === 'LIVE' || meta.mode === 'live view' ? 'Latest run' : 'Latest audit'}</b> — reviewed <b>${s.total}</b> leads: ` +
-    `<b>${s.evaluating}</b> set to Follow&nbsp;up, <b>${s.closed}</b> marked Dead, ` +
+    `<b>${s.evaluating}</b> set to Evaluating, <b>${s.underContract}</b> to Under&nbsp;Contract, <b>${s.closed}</b> to Closed, ` +
     `<b>${s.manualReview}</b> flagged (auto-noted), <b>${s.leftNew}</b> left New` +
     `${s.failed ? ` · <span style="color:var(--dead)">${s.failed} failed writes</span>` : ' · 0 errors'}.`;
 
@@ -139,8 +139,8 @@ function buildHtml(rows, history, meta = {}) {
         const st = r.recommended_status;
         let act = 'act hold', txt = 'held / flagged';
         if (st === 'Evaluating') { act = r.update_attempted ? (r.update_saved ? 'act ok' : 'act fail') : 'act ok'; txt = r.update_attempted ? (r.update_saved ? '✓ set “Follow up”' : '✗ save failed') : '→ Follow up'; }
-        else if (st === 'Closed') { act = r.update_attempted ? (r.update_saved ? 'act ok' : 'act fail') : 'act ok'; txt = r.update_attempted ? (r.update_saved ? '✓ set “Dead”' : '✗ save failed') : '→ Dead'; }
-        else if (st === 'Under Contract') { act = 'act hold'; txt = 'hold (human)'; }
+        else if (st === 'Closed') { act = r.update_attempted ? (r.update_saved ? 'act ok' : 'act fail') : 'act ok'; txt = r.update_attempted ? (r.update_saved ? '✓ set “Closed”' : '✗ save failed') : '→ Closed'; }
+        else if (st === 'Under Contract') { act = r.update_attempted ? (r.update_saved ? 'act ok' : 'act fail') : 'act ok'; txt = r.update_attempted ? (r.update_saved ? '✓ set “Under Contract”' : '✗ save failed') : '→ Under Contract'; }
         else { act = 'act hold'; txt = 'review'; }
         const disp = st === 'New' ? 'Flagged' : st;
         const url = r.property_url || '';
@@ -163,9 +163,9 @@ function buildHtml(rows, history, meta = {}) {
   <h2>This run at a glance</h2>
   <div class="cards">
     ${card('var(--accent)', 'Reviewed', s.total, 'leads checked')}
-    ${card('var(--eval)', 'Follow up', s.evaluating, 'active → Evaluating')}
-    ${card('var(--dead)', 'Dead', s.closed, 'lost/dead → Closed')}
-    ${card('var(--uc)', 'Under Contract', s.underContract, 'held for a human')}
+    ${card('var(--eval)', 'Evaluating', s.evaluating, 'any activity → Follow up')}
+    ${card('var(--uc)', 'Under Contract', s.underContract, 'signed/accepted → set')}
+    ${card('var(--dead)', 'Closed', s.closed, 'dead or sold → + note')}
     ${card('var(--review)', 'Flagged', s.manualReview, 'auto-noted, no action needed')}
     ${card('var(--ok)', 'Duplicates', s.duplicates, 'flagged, not merged')}
   </div>
@@ -178,12 +178,12 @@ function buildHtml(rows, history, meta = {}) {
 
   <div class="cols">
     <div class="panel"><h2 style="margin-top:0">Daily report — backlog worked over time</h2>${dailyRows}
-      <div class="legend"><span class="i">▲ Follow up</span><span class="i">✕ Dead</span></div></div>
+      <div class="legend"><span class="i">▲ Evaluating</span><span class="i">✕ Closed</span></div></div>
     <div class="panel"><h2 style="margin-top:0">What the terms mean</h2>
       <div class="help">
-        <div><b>Follow up</b> — the rep already worked this lead (call/text/offer). Set to Evaluating.</div>
-        <div><b>Dead</b> — Lost / Invalid / Wrong number per the rep's Lead Stage. Set to Dead.</div>
-        <div><b>Under Contract</b> — high-stakes; held for a person to confirm, never auto-written.</div>
+        <div><b>Evaluating</b> — the rep worked this lead (call/text/offer). Sets Market Status "Follow up".</div>
+        <div><b>Under Contract</b> — signed contract / accepted offer noted. Auto-set to "Under Contract".</div>
+        <div><b>Closed</b> — dead/lost OR sold, per the note. Auto-set to "Closed" with a note saying which.</div>
         <div><b>Review</b> — signals conflict or a contact was worked but has no Lead Stage.</div>
         <div><b>Left New</b> — no contact or not worked yet; correctly untouched.</div>
         <div><b>Everything is reversible</b> — one status field per lead; the State field is never touched.</div>

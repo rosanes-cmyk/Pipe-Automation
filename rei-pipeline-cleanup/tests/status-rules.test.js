@@ -3,8 +3,9 @@ const { test } = require('node:test');
 const assert = require('node:assert');
 const { classify } = require('../src/status-rules');
 
-// Confirmed mapping: Evaluating + Closed-dead auto-write; UC + Closed-won hold.
-const MS = { Evaluating: 'Follow up', UnderContract: null, ClosedWon: null, ClosedDead: 'Dead' };
+// Production 4-stage mapping (fully automated): New (leave), Evaluating='Follow up',
+// Under Contract='Under Contract', Closed='Closed' for BOTH dead and sold (+ note why).
+const MS = { Evaluating: 'Follow up', UnderContract: 'Under Contract', ClosedWon: 'Closed', ClosedDead: 'Closed' };
 
 const P = (over) => ({ hasContact: true, tags: [], notes: [], activities: [], leadStage: '', disposition: '', hasOutreach: false, ...over });
 
@@ -24,34 +25,38 @@ test('lead stage Interested -> Evaluating', () => {
   assert.equal(classify(P({ leadStage: 'Interested' }), MS).recommendedStatus, 'Evaluating');
 });
 
-test('lead stage Lost/Dead -> Closed set "Dead" (auto-write)', () => {
+test('lead stage Lost/Dead -> Closed (auto-write) with a "why" note', () => {
   const d = classify(P({ leadStage: '9 Lost / Dead Lead', disposition: 'Unresponsive' }), MS);
   assert.equal(d.action, 'set_status');
   assert.equal(d.recommendedStatus, 'Closed');
-  assert.equal(d.marketStatusValue, 'Dead');
+  assert.equal(d.marketStatusValue, 'Closed');
+  assert.match(d.note, /dead|lost/i);
 });
 
-test('lead stage Invalid -> Closed / Dead', () => {
+test('lead stage Invalid -> Closed', () => {
   const d = classify(P({ leadStage: '0 Invalid Leads' }), MS);
   assert.equal(d.recommendedStatus, 'Closed');
-  assert.equal(d.marketStatusValue, 'Dead');
+  assert.equal(d.marketStatusValue, 'Closed');
 });
 
-test('disposition Wrong Number -> Closed / Dead', () => {
-  assert.equal(classify(P({ disposition: 'Wrong Number' }), MS).marketStatusValue, 'Dead');
+test('disposition Wrong Number -> Closed', () => {
+  assert.equal(classify(P({ disposition: 'Wrong Number' }), MS).marketStatusValue, 'Closed');
 });
 
-test('Closed-won stays HELD (reserve Closed/Sold for real sales)', () => {
+test('Closed-won (Sold) -> Closed (auto-write) with a "sold" note', () => {
   const d = classify(P({ leadStage: 'Sold' }), MS);
   assert.equal(d.recommendedStatus, 'Closed');
-  assert.equal(d.action, 'hold');
-  assert.equal(d.marketStatusValue, null);
+  assert.equal(d.action, 'set_status');
+  assert.equal(d.marketStatusValue, 'Closed');
+  assert.match(d.note, /sold|completed/i);
 });
 
-test('lead stage Under Contract -> HELD for a human', () => {
+test('lead stage Under Contract -> auto-set "Under Contract" + note', () => {
   const d = classify(P({ leadStage: 'Under Contract' }), MS);
   assert.equal(d.recommendedStatus, 'Under Contract');
-  assert.equal(d.action, 'hold');
+  assert.equal(d.action, 'set_status');
+  assert.equal(d.marketStatusValue, 'Under Contract');
+  assert.match(d.note, /under contract/i);
 });
 
 test('lead stage New Lead -> leave New', () => {

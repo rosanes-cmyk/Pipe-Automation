@@ -32,11 +32,11 @@
 
   "marketStatus": {
     "$comment": "REI Market Status vocabulary (confirmed from the live dropdown): New, Available, Unsold, Follow up, Contract Pending, Under Contract, Sold, Rented, Outsourced, Dead, Closed, Need to mail postcard, Invalid Lead, For Rent, Pending, Property Sold, Wrong Number, Do Not Mail, Interested, Cancelled Contract, Listed in the market, Declined offer, Unresponsive, Under Contract (Dispo).",
-    "$comment_mapping": "Confirmed mapping: Evaluating='Follow up' and ClosedDead='Dead' auto-write (both backed by the rep's Lead Stage). ClosedWon=null (reserve Closed/Sold for an actual completed sale; hold). UnderContract=null (rare + high-stakes; hold for a human).",
+    "$comment_mapping": "4-stage pipeline model (fully automated, no human step): New (leave), Evaluating='Follow up', Under Contract='Under Contract', Closed='Closed' for BOTH dead/lost and sold/completed — with an auto-note explaining why it was closed (dead vs sold).",
     "Evaluating": "Follow up",
-    "UnderContract": null,
-    "ClosedWon": null,
-    "ClosedDead": "Dead"
+    "UnderContract": "Under Contract",
+    "ClosedWon": "Closed",
+    "ClosedDead": "Closed"
   },
 
   "address": {
