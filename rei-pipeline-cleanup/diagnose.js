@@ -29,6 +29,53 @@ const log = (m) => console.log(m);
   try {
     await ensureLoggedIn(page, settings, log);
 
+    // ADDRSAVE mode: node diagnose.js addrsave <id> -> fill the tidied street,
+    // save, then read the value BEFORE reload and AFTER reload. Distinguishes a
+    // server-side revert (value flips back after reload) from a fill/save that
+    // never took. This DOES write, but only a cosmetic street tidy.
+    if (argId === 'addrsave') {
+      const id = process.argv[3];
+      if (!id) { log('Usage: node diagnose.js addrsave <propertyId>'); return; }
+      const { reviewAddress } = require('./src/address');
+      const u = abs((settings.urls.addressEdit || '/properties/details/{id}/propertyDetails').replace('{id}', id));
+      const openEdit = async () => {
+        await page.goto(u, { waitUntil: 'domcontentloaded' }).catch(() => {});
+        await page.waitForSelector('#address', { state: 'attached', timeout: 20000 }).catch(() => {});
+        const edit = page.locator('button[onclick*="editable_address"]').first();
+        if (await edit.count().catch(() => 0)) await edit.click().catch(() => {});
+        await page.locator('#address').first().waitFor({ state: 'visible', timeout: 6000 }).catch(() => {});
+      };
+      const readVal = (s) => page.evaluate((sel) => { const el = document.querySelector(sel); return el ? el.value : null; }, s);
+
+      await openEdit();
+      const cur = (await readVal('#address')) || '';
+      const r = reviewAddress({ street: cur.trim(), city: '', state: '', zip: '' }, { tidyStreetText: true });
+      const target = r.cleaned.street || cur.trim();
+      log(`\n== ADDRSAVE PROBE: property ${id} ==`);
+      log(`current #address : "${cur}"`);
+      log(`tidied target    : "${target}"`);
+      if (target === cur.trim() && cur === cur.trim()) { log('(already clean — nothing to test; pick a lead with Avenue/Drive/trailing space)'); return; }
+
+      await page.locator('#address').first().fill(target).catch(() => {});
+      await page.evaluate(() => { const el = document.querySelector('#address'); if (el) { el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); } }).catch(() => {});
+      const save = page.locator('button[onclick*="address_form"]').first();
+      if (await save.isVisible({ timeout: 2000 }).catch(() => false)) await save.click().catch(() => {});
+      await page.evaluate(() => { if (typeof window.savePropInfo === 'function') window.savePropInfo('address_form'); }).catch(() => {});
+      await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {});
+      await page.waitForTimeout(1500);
+      const afterSaveNoReload = (await readVal('#address'));
+      log(`after save (no reload): "${afterSaveNoReload}"`);
+
+      await openEdit();
+      const afterReload = (await readVal('#address'));
+      log(`after reload          : "${afterReload}"`);
+      log('\nInterpretation:');
+      if (afterReload && afterReload.trim() === target) log('  -> PERSISTED. The write works for this lead.');
+      else if (afterSaveNoReload && afterSaveNoReload.trim() === target) log('  -> REVERTED ON RELOAD. REI overwrites the address server-side (likely linked to the attached contact/owner). Cannot fix via this form — flag these.');
+      else log('  -> FILL/SAVE DID NOT TAKE even before reload. The save handler is not applying our value.');
+      return;
+    }
+
     // NOTES mode: node diagnose.js notes <id>  -> reveal the property Notes UI.
     if (argId === 'notes') {
       const id = process.argv[3];
