@@ -115,7 +115,7 @@ code{background:#0d1b3e;color:#e6edff;padding:1px 6px;border-radius:4px;font-fam
 
 <h2><span class="n">7</span>Dashboard &amp; daily report</h2>
 <ul>
-<li><b>Stat cards</b> — Reviewed, Follow up, Dead, Under Contract, Flagged, Duplicates. Click any card to see those leads with links into REI.</li>
+<li><b>Stat cards</b> — Reviewed, Left as New, Evaluating, Under Contract, Closed, Flagged, Duplicates. They update <b>live</b> as the run works down the list. Click any card to see those leads (scrollable) with links into REI.</li>
 <li><b>Run clock</b> — shows how long the automation has been running.</li>
 <li><b>Daily Report</b> — a clean one-page summary (plain-English + the key numbers) that you Save as PDF for records/management.</li>
 </ul>
@@ -167,6 +167,16 @@ code{background:#0d1b3e;color:#e6edff;padding:1px 6px;border-radius:4px;font-fam
 </ol>
 <div class="callout"><b>Current download link:</b> drive.google.com/file/d/1Nzpf4Phvnl_0y1WVtHm8DgRLCMnnQKU_/view &nbsp;—&nbsp; <i>Pipeline Status Cleanup Setup 0.1.2.exe</i>. After each rebuild, upload the new version, delete the old one, and replace this link.</div>
 <div class="callout warn"><b>Rebuild whenever the app changes.</b> The Setup .exe is a snapshot. After any code update, <code>git pull</code> and run the builder again, then re-upload the new Setup .exe (delete the old one so no one installs a stale version).</div>
+
+<h3>Update to a new version (re-run &amp; reinstall)</h3>
+<ol class="steps">
+<li>In the app, click <b>Stop</b> (if running) and close the window.</li>
+<li>Get the latest code and rebuild:<br/><code>cd C:\Users\&lt;you&gt;\Documents\Pipe-Automation\rei-pipeline-cleanup</code><br/><code>git pull origin claude/pipeline-status-cleanup-test-61hwcr</code><br/><code>powershell -ExecutionPolicy Bypass -File .\Build-Installer.ps1</code></li>
+<li>Double-click the new <b>dist\Pipeline Status Cleanup Setup ….exe</b>. It installs <b>over</b> the old version — no need to uninstall first.</li>
+<li>Your saved REI login and past reports are kept (they live in your per-user %APPDATA% folder, separate from the app).</li>
+<li>Launch the app and click <b>Start</b> as usual.</li>
+</ol>
+<div class="callout"><b>Just testing changes? Skip the rebuild.</b> Run <code>npm run app</code> from the project folder after <code>git pull</code> — same app window with the newest code, no reinstall. Cut a fresh installer only when handing a stable version to teammates.</div>
 <div class="callout"><b>Note:</b> the installer must be built on <b>Windows</b>, and the build needs internet the first time (it downloads packaging tools). Each teammate still does the one-time REI login on their own machine — the app automates <i>your</i> logged-in REI session per PC; it cannot log in for them.</div>
 
 <div class="foot">Twin Home Buyer / Equity Track — Internal SOP. Pipeline Status Cleanup automation. Every change made by this tool is reversible; the State field is never modified.</div>
