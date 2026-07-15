@@ -49,7 +49,9 @@ class AddressWriter {
     return await this.page.evaluate(() => {
       document.querySelectorAll('[data-addr-scope]').forEach((e) => e.removeAttribute('data-addr-scope'));
       const controls = [...document.querySelectorAll('button, a, input[type=button], input[type=submit]')];
-      const save = controls.find((b) => /save address details/i.test((b.innerText || b.value || '').trim()));
+      // textContent (not innerText) — the button is hidden until edit mode, and
+      // innerText returns "" for hidden elements.
+      const save = controls.find((b) => /save address details/i.test((b.textContent || b.value || '').trim()));
       if (!save) return false;
       let el = save;
       for (let i = 0; i < 10 && el; i++) {
