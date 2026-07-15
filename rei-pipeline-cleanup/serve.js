@@ -115,12 +115,13 @@ details.info .body{padding:2px 0 14px;color:var(--ink-2);font-size:13.5px}detail
 .stat.hl{border-color:var(--accent);box-shadow:0 0 0 1px rgba(59,130,246,.3)}
 .stat .num{font-size:30px;font-weight:750;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
 .stat .lab{font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin-top:3px;font-weight:700}
-.n-white{color:#fff}.n-green{color:var(--green)}.n-red{color:var(--red)}.n-amber{color:var(--amber)}.n-cyan{color:var(--cyan)}.n-purple{color:var(--purple)}
+.n-white{color:#fff}.n-green{color:var(--green)}.n-red{color:var(--red)}.n-amber{color:var(--amber)}.n-cyan{color:var(--cyan)}.n-purple{color:var(--purple)}.n-slate{color:#8aa0c6}
 .firstrun{background:var(--panel);border:1px dashed var(--line-2);border-radius:12px;padding:26px;text-align:center;color:var(--muted);margin-bottom:14px}.firstrun b{color:var(--ink)}
 .detail{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:16px}
 .detail .close{float:right;cursor:pointer;color:var(--muted);font-size:13px}
 .detail h3{margin:0 0 4px;font-size:16px}.detail .hint{color:var(--muted);font-size:12.5px;margin-bottom:10px}
 .lead{padding:11px 0;border-bottom:1px solid var(--line)}.lead:last-child{border-bottom:0}
+.detail .leadlist{max-height:360px;overflow-y:auto;padding-right:8px;margin-top:4px}
 .lead .top{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .lead a.addr{color:var(--ink);font-weight:700;text-decoration:none;font-size:14px}.lead a.addr:hover{color:var(--accent);text-decoration:underline}
 .lead .open{color:var(--accent);font-size:12px;text-decoration:none;font-weight:600}
@@ -243,27 +244,27 @@ async function startRun(resume){
   poll();
 }
 async function stopRun(){ await fetch('/api/stop',{method:'POST'}); }
-const CATS={all:'All reviewed',ev:'Evaluating',cl:'Closed',uc:'Under Contract',mr:'Flagged',dup:'Duplicates'};
-function catMatch(cat,r){return cat==='all'?true:cat==='ev'?r.recommended_status==='Evaluating':cat==='cl'?r.recommended_status==='Closed':cat==='uc'?r.recommended_status==='Under Contract':cat==='mr'?!!r.manual_review_required:cat==='dup'?!!r.possible_duplicate:false;}
+const CATS={all:'All reviewed',nw:'Left as New (untouched)',ev:'Evaluating',cl:'Closed',uc:'Under Contract',mr:'Flagged',dup:'Duplicates'};
+function catMatch(cat,r){return cat==='all'?true:cat==='nw'?(r.recommended_status==='New'&&!r.manual_review_required&&!r.possible_duplicate):cat==='ev'?r.recommended_status==='Evaluating':cat==='cl'?r.recommended_status==='Closed':cat==='uc'?r.recommended_status==='Under Contract':cat==='mr'?!!r.manual_review_required:cat==='dup'?!!r.possible_duplicate:false;}
 function showCat(cat){
   const list=ROWS.filter(r=>catMatch(cat,r));
   const d=document.getElementById('detail'); d.classList.remove('hide');
   d.innerHTML='<span class="close" onclick="document.getElementById(\\'detail\\').classList.add(\\'hide\\')">✕ close</span>'+
     '<h3>'+CATS[cat]+' ('+list.length+')</h3><div class="hint">Click an address to open the lead in REI BlackBook.</div>'+
-    (list.length?list.map(r=>{const url=r.property_url||'https://my.reiblackbook.com/properties/inbox';const st=r.recommended_status||'New';
+    (list.length?'<div class="leadlist">'+list.map(r=>{const url=r.property_url||'https://my.reiblackbook.com/properties/inbox';const st=r.recommended_status||'New';
       return '<div class="lead"><div class="top"><a class="addr" href="'+esc(url)+'" target="_blank">'+esc(r.property_address||'(no address)')+'</a>'+
         '<span class="st '+stClass(st)+'">'+esc(st)+'</span>'+(r.contact_name?'<span class="cont">'+esc(r.contact_name)+'</span>':'')+
         '<a class="open" href="'+esc(url)+'" target="_blank">↗ Open in REI</a></div><div class="why">'+esc(r.manual_review_reason||r.latest_activity_summary||r.latest_activity_type||'')+'</div></div>';
-    }).join(''):'<div class="why" style="padding:8px 0">No leads in this category.</div>');
+    }).join('')+'</div>':'<div class="why" style="padding:8px 0">No leads in this category.</div>');
   d.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 async function loadStats(){
   try{
     ROWS=await fetch('/api/latest').then(r=>r.json());
-    const c={total:ROWS.length,ev:0,cl:0,uc:0,mr:0,dup:0};
-    ROWS.forEach(r=>{ if(r.recommended_status==='Evaluating')c.ev++; else if(r.recommended_status==='Closed')c.cl++; else if(r.recommended_status==='Under Contract')c.uc++; if(r.manual_review_required)c.mr++; if(r.possible_duplicate)c.dup++; });
+    const c={total:ROWS.length,nw:0,ev:0,cl:0,uc:0,mr:0,dup:0};
+    ROWS.forEach(r=>{ if(r.recommended_status==='Evaluating')c.ev++; else if(r.recommended_status==='Closed')c.cl++; else if(r.recommended_status==='Under Contract')c.uc++; else if(r.recommended_status==='New'&&!r.manual_review_required&&!r.possible_duplicate)c.nw++; if(r.manual_review_required)c.mr++; if(r.possible_duplicate)c.dup++; });
     document.getElementById('firstrun').classList.toggle('hide', ROWS.length>0);
-    const cards=[['TOTAL REVIEWED',c.total,'n-white','','all'],['EVALUATING',c.ev,'n-green','','ev'],['UNDER CONTRACT',c.uc,'n-purple','','uc'],['CLOSED',c.cl,'n-red','','cl'],['FLAGGED',c.mr,'n-amber','','mr'],['DUPLICATES',c.dup,'n-cyan','hl','dup']];
+    const cards=[['TOTAL REVIEWED',c.total,'n-white','','all'],['LEFT AS NEW',c.nw,'n-slate','','nw'],['EVALUATING',c.ev,'n-green','','ev'],['UNDER CONTRACT',c.uc,'n-purple','','uc'],['CLOSED',c.cl,'n-red','','cl'],['FLAGGED',c.mr,'n-amber','','mr'],['DUPLICATES',c.dup,'n-cyan','hl','dup']];
     document.getElementById('stats').innerHTML=cards.map(x=>'<div class="stat '+x[3]+'" onclick="showCat(\\''+x[4]+'\\')"><div class="num '+x[2]+'">'+x[1]+'</div><div class="lab">'+x[0]+'</div></div>').join('');
   }catch(e){}
 }
