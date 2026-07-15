@@ -92,6 +92,7 @@ class Controller {
         writeJson(this.settings.paths.progress, { completed: [...completed], updatedAt: nowIso() });
         writeJson(this.settings.paths.manualReview, manualReview);
         writeJson(this.settings.paths.duplicates, duplicateQueue);
+        reporter.flush(); // write results after every lead so the dashboard updates live
         processed++;
         return true;
       };

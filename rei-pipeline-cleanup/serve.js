@@ -220,7 +220,7 @@ label.chk{display:flex;align-items:center;gap:7px;color:var(--ink-2);font-size:1
   </div>
 </div>
 <script>
-let live=false, wasRunning=false, ROWS=[];
+let live=false, wasRunning=false, ROWS=[], pollTick=0;
 // Elapsed-time clock: track the current/last run's start & finish.
 var clk={start:null, finish:null, running:false};
 function fmtDur(ms){if(ms<0)ms=0;var s=Math.floor(ms/1000);var h=Math.floor(s/3600);var m=Math.floor((s%3600)/60);var ss=s%60;var p=function(n){return(n<10?'0':'')+n;};return p(h)+':'+p(m)+':'+p(ss);}
@@ -293,6 +293,8 @@ async function poll(){
     let n=0; (s.log||[]).forEach(l=>{const m=l.match(/^\\[(\\d+)\\]/); if(m)n=Math.max(n,+m[1]);});
     if(s.running){prog.classList.remove('hide');prog.textContent='processed '+n+' · '+(s.mode||'').toUpperCase();}else prog.classList.add('hide');
     const log=document.getElementById('log'); if(s.log&&s.log.length){log.textContent=s.log.join('\\n');log.scrollTop=log.scrollHeight;}
+    // Refresh the stat cards live while running (every ~6s), and once more when it stops.
+    if(s.running){ pollTick=(pollTick+1)%3; if(pollTick===0) loadStats(); }
     if(wasRunning&&!s.running){ loadStats(); }
     wasRunning=s.running;
     // Feed the elapsed-time clock.
