@@ -142,9 +142,9 @@ code{background:#0d1b3e;color:#e6edff;padding:1px 6px;border-radius:4px;font-fam
 <ul>
 <li><b>Source / code repository:</b> github.com/rosanes-cmyk/Pipe-Automation (branch: claude/pipeline-status-cleanup-test-61hwcr)</li>
 <li><b>Setup on a new PC:</b> see <code>SETUP_NEW_PC.md</code> and <code>INSTALL_APP.md</code> in the project folder.</li>
-<li><b>Runtime download (Electron):</b> drive.google.com/file/d/1UnPcxGhwXqUicldBkuAyP1ygsNOZrbTr/view</li>
+<li><b>Download the app (installer for teammates):</b> <br/>drive.google.com/file/d/10Zdv6k7x8gaHUsaqQOb7yCycvGwcCOt5/view<br/><span class="pill">Pipeline Status Cleanup Setup 0.1.0.exe — download, double-click, install.</span></li>
 </ul>
-<div class="callout warn"><b>Do NOT share <code>electron.exe</code> by itself.</b> On its own it fails with <i>"code execution cannot proceed because ffmpeg.dll was not found"</i> — it is only the runtime. Share the packaged <b>Setup .exe</b> built in the next section instead.</div>
+<div class="callout safe"><b>This is the file to give teammates.</b> The Setup .exe above bundles everything (app + Electron + ffmpeg.dll + dependencies). Download it, run it, and it installs like a normal program with a Desktop / Start-Menu shortcut. (Do <b>not</b> share a bare <code>electron.exe</code> — that fails with the <i>ffmpeg.dll not found</i> error.)</div>
 
 <div class="pagebreak"></div>
 <h2><span class="n">11</span>Rebuild the app &amp; share it online with teammates</h2>
@@ -163,6 +163,7 @@ code{background:#0d1b3e;color:#e6edff;padding:1px 6px;border-radius:4px;font-fam
 <li>Send teammates the link. They download it, double-click, and install.</li>
 <li>On first launch each person logs into REI once in the Chrome window it opens.</li>
 </ol>
+<div class="callout"><b>Current download link:</b> drive.google.com/file/d/10Zdv6k7x8gaHUsaqQOb7yCycvGwcCOt5/view &nbsp;—&nbsp; <i>Pipeline Status Cleanup Setup 0.1.0.exe</i>. Replace this link after each rebuild with the new version's link.</div>
 <div class="callout warn"><b>Rebuild whenever the app changes.</b> The Setup .exe is a snapshot. After any code update, <code>git pull</code> and run the builder again, then re-upload the new Setup .exe (delete the old one so no one installs a stale version).</div>
 <div class="callout"><b>Note:</b> the installer must be built on <b>Windows</b>, and the build needs internet the first time (it downloads packaging tools). Each teammate still does the one-time REI login on their own machine — the app automates <i>your</i> logged-in REI session per PC; it cannot log in for them.</div>
 
