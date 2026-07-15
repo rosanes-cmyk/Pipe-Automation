@@ -29,6 +29,35 @@ const log = (m) => console.log(m);
   try {
     await ensureLoggedIn(page, settings, log);
 
+    // STATES mode: node diagnose.js states <id> -> dump the #state <select>
+    // option value/label pairs. If a value is "CA" (code) while the label is
+    // "California", we CAN set the state to CA via the dropdown after all.
+    if (argId === 'states') {
+      const id = process.argv[3];
+      if (!id) { log('Usage: node diagnose.js states <propertyId>'); return; }
+      const u = abs((settings.urls.addressEdit || '/properties/details/{id}/propertyDetails').replace('{id}', id));
+      await page.goto(u, { waitUntil: 'domcontentloaded' }).catch(() => {});
+      await page.waitForSelector('#state', { state: 'attached', timeout: 20000 }).catch(() => {});
+      const edit = page.locator('button[onclick*="editable_address"]').first();
+      if (await edit.count().catch(() => 0)) await edit.click().catch(() => {});
+      await page.waitForTimeout(600);
+      const info = await page.evaluate(() => {
+        const el = document.querySelector('#state');
+        if (!el) return { found: false };
+        const opts = [...el.options].slice(0, 70).map((o) => ({ value: o.value, label: (o.textContent || '').trim() }));
+        return { found: true, current: el.value, count: el.options.length, opts };
+      }).catch(() => ({ found: false }));
+      log(`\n== STATE SELECT PROBE: property ${id} ==`);
+      if (!info.found) { log('#state not found.'); return; }
+      log(`current value: "${info.current}"   (total options: ${info.count})`);
+      const ca = info.opts.find((o) => /^ca$/i.test(o.value) || /^california$/i.test(o.label));
+      log('California option -> ' + (ca ? `value="${ca.value}" label="${ca.label}"` : 'not found in first 70'));
+      log('\nFirst options (value = label):');
+      info.opts.slice(0, 12).forEach((o) => log(`  "${o.value}"  =  "${o.label}"`));
+      log('\nIf the California option\'s VALUE is "CA", the tool can set State=CA via the dropdown.');
+      return;
+    }
+
     // ADDRSAVE mode: node diagnose.js addrsave <id> -> fill the tidied street,
     // save, then read the value BEFORE reload and AFTER reload. Distinguishes a
     // server-side revert (value flips back after reload) from a fill/save that
