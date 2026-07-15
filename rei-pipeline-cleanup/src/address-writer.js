@@ -5,17 +5,15 @@ const { reviewAddress } = require('./address');
 /**
  * Address write-back for REI BlackBook (Edit Property Details).
  *
- * Confirmed live (property 3184299). The page has several independently-editable
- * sections, each with its own "Edit" toggle and Save button, and REI renders a
- * hidden duplicate of the address inputs — so a bare #address can resolve to the
- * wrong copy. To stay exact we anchor on the one unique element, the
- * "Save Address Details" button, tag the container that holds BOTH that button
- * and the address input, and operate strictly inside that scope:
- *   - street : [name="address"]   (e.g. "1217 Newbridge Ave ")
- *   - city   : [name="city"]
- *   - state  : [name="state"]  (a <select> — NEVER touched; SOP §7)
- *   - zip    : [name="zip_code"]
- *   - save   : button "Save Address Details"
+ * Confirmed live (property 3184299). The property-details sections load via
+ * AJAX and each has its own Edit toggle + Save button. The address section:
+ *   - Edit toggle : <button ... onclick="$('#editable_address').hide();$('#saveaddress').show()">Edit</button>
+ *   - street      : #address     (unique id; e.g. "1217 Newbridge Ave ")
+ *   - unit        : #address2
+ *   - city        : #city
+ *   - state       : #state  (a <select> — NEVER touched; SOP §7)
+ *   - zip         : #zip_code
+ *   - save        : <button onclick="savePropInfo('address_form')">Save Address Details</button>
  *
  * SAFETY MODEL — this is the one non-reversible action in the job, so:
  *   1. Runs only when settings.address.writeToRei is true; else no-ops (flag).
@@ -30,7 +28,13 @@ class AddressWriter {
     this.page = page;
     this.settings = settings;
     this.log = log;
-    this.cfg = (settings.address && settings.address.editFormSelectors) || {};
+    const c = (settings.address && settings.address.editFormSelectors) || {};
+    this.sel = {
+      edit: c.editButton || 'button[onclick*="editable_address"]',
+      street: c.street || '#address',
+      city: c.city || '#city',
+      save: c.save || 'button[onclick*="address_form"]',
+    };
   }
 
   _url(id) {
@@ -40,60 +44,31 @@ class AddressWriter {
 
   _enabled() { return !!(this.settings.address && this.settings.address.writeToRei); }
 
-  /**
-   * Tag the container that holds the "Save Address Details" button AND an
-   * address input, so every later query is scoped to the real address form
-   * (defeats the hidden duplicate). Returns true if the scope was found.
-   */
-  async _tagScope() {
-    return await this.page.evaluate(() => {
-      document.querySelectorAll('[data-addr-scope]').forEach((e) => e.removeAttribute('data-addr-scope'));
-      const controls = [...document.querySelectorAll('button, a, input[type=button], input[type=submit]')];
-      // textContent (not innerText) — the button is hidden until edit mode, and
-      // innerText returns "" for hidden elements.
-      const save = controls.find((b) => /save address details/i.test((b.textContent || b.value || '').trim()));
-      if (!save) return false;
-      let el = save;
-      for (let i = 0; i < 10 && el; i++) {
-        if (el.querySelector && el.querySelector('[name="address"]')) { el.setAttribute('data-addr-scope', '1'); return true; }
-        el = el.parentElement;
-      }
-      return false;
-    }).catch(() => false);
+  /** Read an input's value directly from the DOM (works even while hidden). */
+  async _val(sel) {
+    return await this.page.evaluate((s) => {
+      const el = document.querySelector(s);
+      return el ? (el.value || '') : null;
+    }, sel).catch(() => null);
   }
 
-  _scope() { return this.page.locator('[data-addr-scope="1"]'); }
-  _street() { return this._scope().locator('[name="address"]').first(); }
-  _city() { return this._scope().locator('[name="city"]').first(); }
-  _save() { return this._scope().getByRole('button', { name: /save address details/i }).first(); }
-  _editBtn() { return this._scope().getByRole('button', { name: /^\s*edit\s*$/i }); }
-
-  async _ready() {
-    return (await this._street().isVisible({ timeout: 400 }).catch(() => false))
-        && (await this._save().isVisible({ timeout: 400 }).catch(() => false));
-  }
-
-  /** Put the address section into edit mode (street input + Save both visible). */
-  async _reveal() {
-    if (!(await this._tagScope())) return false;
-    if (await this._ready()) return true;
-    // Click the Edit control(s) inside the address scope first, then any Edit.
-    const groups = [this._editBtn(), this.page.getByRole('button', { name: /^\s*edit\s*$/i })];
-    for (const loc of groups) {
-      const n = await loc.count().catch(() => 0);
-      for (let i = 0; i < Math.min(n, 12); i++) {
-        await loc.nth(i).click().catch(() => {});
-        await this.page.waitForTimeout(450);
-        await this._tagScope(); // re-tag: DOM may have re-rendered on toggle
-        if (await this._ready()) return true;
-      }
+  /** Load the page, wait for the AJAX address form, and open its edit view. */
+  async _openEdit(url) {
+    await this.page.goto(url, { waitUntil: 'domcontentloaded' }).catch(() => {});
+    // The property-details sections load via AJAX — wait for the address input.
+    const attached = await this.page.waitForSelector(this.sel.street, { state: 'attached', timeout: 20000 })
+      .then(() => true).catch(() => false);
+    if (!attached) return false;
+    // Reveal the address edit view (intended UI path), with a jQuery fallback.
+    const edit = this.page.locator(this.sel.edit).first();
+    if (await edit.count().catch(() => 0)) {
+      await edit.click().catch(() => {});
+    } else {
+      await this.page.evaluate(() => { if (window.jQuery) { window.jQuery('#editable_address').hide(); window.jQuery('#saveaddress').show(); } }).catch(() => {});
     }
-    return await this._ready();
-  }
-
-  async _readVal(loc) {
-    if (!(await loc.isVisible({ timeout: 600 }).catch(() => false))) return '';
-    return (await loc.inputValue().catch(() => '')) || '';
+    // Wait for the street input to become editable.
+    await this.page.locator(this.sel.street).first().waitFor({ state: 'visible', timeout: 6000 }).catch(() => {});
+    return await this.page.locator(this.sel.street).first().isVisible().catch(() => false);
   }
 
   /**
@@ -105,15 +80,13 @@ class AddressWriter {
       return { written: false, skipped: true, detail: 'address.writeToRei off — flagged, not written' };
     }
     const url = this._url(id);
-    await this.page.goto(url, { waitUntil: 'domcontentloaded' }).catch(() => {});
-    await this.page.waitForTimeout(1200);
-    if (!(await this._reveal())) {
-      return { written: false, skipped: false, detail: 'could not reveal the address edit form' };
+    if (!(await this._openEdit(url))) {
+      return { written: false, skipped: false, detail: 'address edit form did not load / reveal' };
     }
 
-    const rawStreet = await this._readVal(this._street());
+    const rawStreet = (await this._val(this.sel.street)) || '';
     const curStreet = rawStreet.trim();
-    const curCity = (await this._readVal(this._city())).trim();
+    const curCity = ((await this._val(this.sel.city)) || '').trim();
 
     const r = reviewAddress({ street: curStreet, city: curCity, state: '', zip: '' }, { tidyStreetText: true });
     const newStreet = r.cleaned.street || curStreet;
@@ -125,23 +98,25 @@ class AddressWriter {
       return { written: false, skipped: true, detail: 'already clean', before: curStreet, after: curStreet };
     }
 
-    if (streetChanged) await this._street().fill(newStreet).catch(() => {});
-    if (cityChanged) await this._city().fill(newCity).catch(() => {});
+    if (streetChanged) await this.page.locator(this.sel.street).first().fill(newStreet).catch(() => {});
+    if (cityChanged) await this.page.locator(this.sel.city).first().fill(newCity).catch(() => {});
     // State + ZIP intentionally untouched.
 
-    const save = this._save();
-    if (!(await save.isVisible({ timeout: 2000 }).catch(() => false))) {
-      return { written: false, skipped: false, detail: 'Save Address Details button not visible' };
+    // Save via the button, else call the exact global handler.
+    const save = this.page.locator(this.sel.save).first();
+    if (await save.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await save.click().catch(() => {});
+    } else {
+      await this.page.evaluate(() => { if (typeof window.savePropInfo === 'function') window.savePropInfo('address_form'); }).catch(() => {});
     }
-    await save.click().catch(() => {});
-    await this.page.waitForTimeout(1800);
+    await this.page.waitForTimeout(2000);
 
-    // Verify on reload.
+    // Verify on reload — read the saved value straight from the DOM.
     await this.page.goto(url, { waitUntil: 'domcontentloaded' }).catch(() => {});
-    await this.page.waitForTimeout(1200);
-    await this._reveal();
-    const gotStreet = (await this._readVal(this._street())).trim();
-    const gotCity = (await this._readVal(this._city())).trim();
+    await this.page.waitForSelector(this.sel.street, { state: 'attached', timeout: 20000 }).catch(() => {});
+    await this.page.waitForTimeout(600);
+    const gotStreet = ((await this._val(this.sel.street)) || '').trim();
+    const gotCity = ((await this._val(this.sel.city)) || '').trim();
     const ok = gotStreet === newStreet && (!cityChanged || gotCity === newCity);
     return {
       written: ok, skipped: false,

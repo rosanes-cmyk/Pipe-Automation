@@ -45,12 +45,12 @@
     "writeToRei": true,
     "$comment_write": "true = normalize the record's own Street/City formatting in the Edit Property Details form (reload-verified). Selectors confirmed live on property 3184299. The writer only cleans formatting of existing field values (never injects list text, never touches State/ZIP), so it cannot restructure a record. Set false to go back to compute-and-report only.",
     "editFormSelectors": {
-      "$comment": "Confirmed live (property 3184299). street/city/zip are stable input ids; save is the address-section button. editButton left blank — the writer scans the section Edit buttons until #address is visible.",
-      "editButton": "",
+      "$comment": "Confirmed live (property 3184299). The address section loads via AJAX; its Edit toggle has onclick $('#editable_address').hide();$('#saveaddress').show() and its Save is onclick savePropInfo('address_form'). street/city/zip are unique input ids; #state (a <select>) is never touched.",
+      "editButton": "button[onclick*=\"editable_address\"]",
       "street": "#address",
       "city": "#city",
       "zip": "#zip_code",
-      "save": "button:has-text(\"Save Address Details\")"
+      "save": "button[onclick*=\"address_form\"]"
     }
   },
 
