@@ -235,7 +235,11 @@ class Controller {
       processed_at: nowIso(),
     });
 
-    this.log(`[${processed + 1}] ${lead.address} (${lead.id}) → ${decision.recommendedStatus} (${decision.action})` +
+    // Show the actual Market Status value that will be written (e.g. "Dead",
+    // "Follow up") rather than the internal pipeline-category name ("Closed").
+    const shown = (decision.action === 'set_status' && decision.marketStatusValue)
+      ? decision.marketStatusValue : decision.recommendedStatus;
+    this.log(`[${processed + 1}] ${lead.address} (${lead.id}) → ${shown} (${decision.action})` +
       `${hasContact ? ` contact=${contactName || att.contactId}` : ' no-contact'}${LIVE_MODE ? ` saved=${saved}` : ' [audit]'}`);
   }
 
