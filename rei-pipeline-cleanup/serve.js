@@ -5,6 +5,7 @@
  *   node serve.js [port]        # default 8787
  */
 const http = require('http');
+const os = require('os');
 const fs = require('fs');
 const path = require('path');
 const { spawn } = require('child_process');
@@ -12,6 +13,24 @@ const { buildHtml, readJson } = require('./src/dashboard');
 
 const settings = JSON.parse(fs.readFileSync(path.resolve(__dirname, 'config/settings.json'), 'utf8'));
 const port = parseInt(process.argv[2], 10) || 8787;
+
+// This machine's LAN (Wi-Fi/Ethernet) IPv4 so teammates on the same network can
+// open the dashboard. Falls back to localhost if no external interface is found.
+function lanIp() {
+  const ifaces = os.networkInterfaces();
+  const prefer = [];
+  for (const name of Object.keys(ifaces)) {
+    for (const ni of ifaces[name] || []) {
+      if (ni.family === 'IPv4' && !ni.internal) {
+        // Prefer common private ranges (typical office Wi-Fi).
+        if (/^(192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.)/.test(ni.address)) prefer.unshift(ni.address);
+        else prefer.push(ni.address);
+      }
+    }
+  }
+  return prefer[0] || 'localhost';
+}
+const shareUrl = `http://${lanIp()}:${port}`;
 
 const state = { running: false, mode: null, startedAt: null, exitCode: null, log: [] };
 let child = null;
@@ -54,6 +73,11 @@ const APP = `<!doctype html><html lang="en"><head><meta charset="utf-8"/>
 .status .s{width:9px;height:9px;border-radius:50%;background:var(--muted)}
 .status.run .s{background:var(--green);box-shadow:0 0 0 3px rgba(34,197,94,.2)}.status.run{color:var(--ink)}
 .status.err .s{background:var(--red)}.status.err{color:#fff}
+.sharebar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12.5px;color:var(--ink-2);background:rgba(56,189,248,.08);border:1px solid rgba(56,189,248,.28);border-radius:10px;padding:8px 12px;margin-bottom:12px}
+.sharebar .si{opacity:.9}
+.sharebar b{color:var(--ink);font-weight:700;letter-spacing:.01em}
+.sharebar .btn{padding:4px 12px;font-size:12px}
+.sharebar .copied{color:var(--green);font-weight:700}
 .tbar{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:14px;flex-wrap:wrap;background:var(--panel);border:1px solid var(--line-2);border-radius:12px;padding:12px 14px;margin-bottom:12px;box-shadow:0 6px 20px rgba(0,0,0,.35)}
 .grp{display:flex;align-items:center;gap:8px}
 .grp+.grp{padding-left:14px;border-left:1px solid var(--line)}
@@ -126,6 +150,13 @@ label.chk{display:flex;align-items:center;gap:7px;color:var(--ink-2);font-size:1
     <div><h1>Pipeline Status Cleanup</h1><div class="sub">Lead Stage Automation · Twin Home Buyer / Equity Track</div></div>
     <div class="right"><span class="prog hide" id="prog"></span>
       <div class="status" id="status"><span class="s"></span><span id="statustext">Idle</span></div></div>
+  </div>
+
+  <div class="sharebar">
+    <span class="si">🔗</span>
+    <span>Share with teammates on this Wi‑Fi — have them open <b id="shareurl">{{SHARE_URL}}</b></span>
+    <button class="btn" onclick="copyShare()">Copy</button>
+    <span class="copied hide" id="copied">Copied ✓</span>
   </div>
 
   <div class="tbar">
@@ -248,13 +279,15 @@ async function poll(){
   }catch(e){}
   setTimeout(poll,2000);
 }
+function copyShare(){var u=document.getElementById('shareurl').textContent.trim();var done=function(){var c=document.getElementById('copied');c.classList.remove('hide');setTimeout(function(){c.classList.add('hide');},1600);};
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(u).then(done).catch(done);}else{var t=document.createElement('textarea');t.value=u;document.body.appendChild(t);t.select();try{document.execCommand('copy');}catch(e){}document.body.removeChild(t);done();}}
 loadStats(); poll();
 </script></body></html>`;
 
 const server = http.createServer((req, res) => {
   try {
     const url = req.url;
-    if (url === '/' || url.startsWith('/?')) return send(res, 200, 'text/html', APP);
+    if (url === '/' || url.startsWith('/?')) return send(res, 200, 'text/html', APP.replace(/\{\{SHARE_URL\}\}/g, shareUrl));
     if (url.startsWith('/dashboard')) {
       const rows = readJson(settings.paths.reportsJson, []);
       const hist = readJson(settings.paths.dailyHistory, []);
@@ -275,7 +308,10 @@ const server = http.createServer((req, res) => {
   } catch (e) { send(res, 500, 'text/plain', String(e.message)); }
 });
 
-server.listen(port, () => {
-  console.log('Pipeline Cleanup console running:  http://localhost:' + port);
-  console.log('Open it in your browser, set options, and click Start. Ctrl+C to stop.');
+// Bind to 0.0.0.0 so teammates on the same Wi-Fi/LAN can open the dashboard.
+server.listen(port, '0.0.0.0', () => {
+  console.log('Pipeline Cleanup console running:');
+  console.log('  This computer:      http://localhost:' + port);
+  console.log('  Share on this WiFi: ' + shareUrl + '   (open on a teammate\'s browser)');
+  console.log('Set options and click Start. Ctrl+C to stop.');
 });
