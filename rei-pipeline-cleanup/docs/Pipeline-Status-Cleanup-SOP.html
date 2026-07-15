@@ -38,7 +38,7 @@ code{background:#0d1b3e;color:#e6edff;padding:1px 6px;border-radius:4px;font-fam
   <div>
     <h1>Pipeline Status Cleanup</h1>
     <div class="sub">Standard Operating Procedure &nbsp;·&nbsp; REI BlackBook Property Pipeline</div>
-    <div class="meta">Twin Home Buyer / Equity Track &nbsp;·&nbsp; Version 1.1 &nbsp;·&nbsp; App build 0.1.2 &nbsp;·&nbsp; 2026-07-15</div>
+    <div class="meta">Twin Home Buyer / Equity Track &nbsp;·&nbsp; Version 1.1 &nbsp;·&nbsp; App build 0.1.4 &nbsp;·&nbsp; 2026-07-15</div>
   </div>
 </div>
 
@@ -137,14 +137,14 @@ code{background:#0d1b3e;color:#e6edff;padding:1px 6px;border-radius:4px;font-fam
 <tr><td>Run stopped partway (dropped connection)</td><td>Reopen the app and Start again — it resumes from the last checkpoint</td></tr>
 <tr><td>Teammates can't open the Wi-Fi link</td><td>Allow Node/Electron through Windows Firewall on the office PC (Private network)</td></tr>
 <tr><td>"Windows protected your PC" (unknown publisher) when installing</td><td>Normal for an in-house app — click <b>More info → Run anyway</b></td></tr>
-<tr><td>Old error: <code>EPERM mkdir … Program Files</code></td><td>Fixed in build <b>0.1.2</b> — data now saves to your per-user folder. Install 0.1.2 (uninstall the old 0.1.0 first).</td></tr>
+<tr><td>Old error: <code>EPERM mkdir … Program Files</code></td><td>Fixed since build <b>0.1.2</b> — data now saves to your per-user folder. Install the latest build (0.1.4).</td></tr>
 </table>
 
 <h2><span class="n">10</span>App files &amp; setup reference</h2>
 <ul>
 <li><b>Source / code repository:</b> github.com/rosanes-cmyk/Pipe-Automation (branch: claude/pipeline-status-cleanup-test-61hwcr)</li>
 <li><b>Setup on a new PC:</b> see <code>SETUP_NEW_PC.md</code> and <code>INSTALL_APP.md</code> in the project folder.</li>
-<li><b>Download the app (installer for teammates):</b> <br/>drive.google.com/file/d/1Nzpf4Phvnl_0y1WVtHm8DgRLCMnnQKU_/view<br/><span class="pill">Use the latest build — <b>Pipeline Status Cleanup Setup 0.1.2.exe</b>. Download, double-click, install. (0.1.2 installs per-user, so it never hits the "Program&nbsp;Files" permission error.)</span></li>
+<li><b>Download the app (installer for teammates):</b> <br/>drive.google.com/file/d/11nWjydctWxbOfFTPBqZSdVmVzXdgdkjO/view<br/><span class="pill">Use the latest build — <b>Pipeline Status Cleanup Setup 0.1.4.exe</b>. Download, double-click, install. (0.1.4 installs per-user, so it never hits the "Program&nbsp;Files" permission error.)</span></li>
 </ul>
 <div class="callout safe"><b>This is the file to give teammates.</b> The Setup .exe above bundles everything (app + Electron + ffmpeg.dll + dependencies). Download it, run it, and it installs like a normal program with a Desktop / Start-Menu shortcut. (Do <b>not</b> share a bare <code>electron.exe</code> — that fails with the <i>ffmpeg.dll not found</i> error.)</div>
 
@@ -156,7 +156,7 @@ code{background:#0d1b3e;color:#e6edff;padding:1px 6px;border-radius:4px;font-fam
 <li>Open PowerShell in the project folder:<br/><code>cd C:\Users\&lt;you&gt;\Documents\Pipe-Automation\rei-pipeline-cleanup</code></li>
 <li>Get the latest code:<br/><code>git pull origin claude/pipeline-status-cleanup-test-61hwcr</code></li>
 <li>Run the one-command builder:<br/><code>powershell -ExecutionPolicy Bypass -File .\Build-Installer.ps1</code><br/>(or manually: <code>npm install</code> then <code>npm run dist</code>)</li>
-<li>When it finishes, the installer is in the <b>dist</b> folder:<br/><code>dist\Pipeline Status Cleanup Setup 0.1.2.exe</code></li>
+<li>When it finishes, the installer is in the <b>dist</b> folder:<br/><code>dist\Pipeline Status Cleanup Setup 0.1.4.exe</code></li>
 </ol>
 <h3>Share it online</h3>
 <ol class="steps">
@@ -165,7 +165,7 @@ code{background:#0d1b3e;color:#e6edff;padding:1px 6px;border-radius:4px;font-fam
 <li>Send teammates the link. They download it, double-click, and install.</li>
 <li>On first launch each person logs into REI once in the Chrome window it opens.</li>
 </ol>
-<div class="callout"><b>Current download link:</b> drive.google.com/file/d/1Nzpf4Phvnl_0y1WVtHm8DgRLCMnnQKU_/view &nbsp;—&nbsp; <i>Pipeline Status Cleanup Setup 0.1.2.exe</i>. After each rebuild, upload the new version, delete the old one, and replace this link.</div>
+<div class="callout"><b>Current download link:</b> drive.google.com/file/d/11nWjydctWxbOfFTPBqZSdVmVzXdgdkjO/view &nbsp;—&nbsp; <i>Pipeline Status Cleanup Setup 0.1.4.exe</i>. After each rebuild, upload the new version, delete the old one, and replace this link.</div>
 <div class="callout warn"><b>Rebuild whenever the app changes.</b> The Setup .exe is a snapshot. After any code update, <code>git pull</code> and run the builder again, then re-upload the new Setup .exe (delete the old one so no one installs a stale version).</div>
 
 <h3>Update to a new version (re-run &amp; reinstall)</h3>
