@@ -98,10 +98,12 @@ class AddressWriter {
       return { written: false, skipped: true, detail: 'already clean', before: curStreet, after: curStreet };
     }
 
-    // Fill + save + reload-verify, retrying once — REI's save is an async POST
-    // and an over-eager reload can read the old value before it lands.
-    let gotStreet = curStreet, gotCity = curCity, ok = false;
-    for (let attempt = 1; attempt <= 2 && !ok; attempt++) {
+    // Fill + save + reload-verify, retrying once IF the save didn't take.
+    // Some records (properties with an attached contact/owner) have their
+    // address re-derived server-side, so our edit applies in the form but
+    // REVERTS on reload — retrying can't help those; detect and flag them.
+    let gotStreet = curStreet, gotCity = curCity, ok = false, reverted = false;
+    for (let attempt = 1; attempt <= 2 && !ok && !reverted; attempt++) {
       if (attempt > 1 && !(await this._openEdit(url))) break; // re-open on retry
 
       if (streetChanged) await this._fill(this.sel.street, newStreet);
@@ -116,6 +118,9 @@ class AddressWriter {
       await this.page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {});
       await this.page.waitForTimeout(1500);
 
+      // Read the value in the form BEFORE reload — did our edit apply at all?
+      const preReload = ((await this._val(this.sel.street)) || '').trim();
+
       // Verify on reload — read the saved value straight from the DOM.
       await this.page.goto(url, { waitUntil: 'domcontentloaded' }).catch(() => {});
       await this.page.waitForSelector(this.sel.street, { state: 'attached', timeout: 20000 }).catch(() => {});
@@ -123,6 +128,18 @@ class AddressWriter {
       gotStreet = ((await this._val(this.sel.street)) || '').trim();
       gotCity = ((await this._val(this.sel.city)) || '').trim();
       ok = gotStreet === newStreet && (!cityChanged || gotCity === newCity);
+
+      // Edit applied in the form but reverted after reload => server-side revert
+      // (contact/owner-linked). Retrying won't help — stop and flag.
+      if (!ok && preReload === newStreet) reverted = true;
+    }
+
+    if (reverted) {
+      return {
+        written: false, skipped: false, reverted: true,
+        detail: 'REI reverts this address on reload (record is contact/owner-linked) — cannot change via the UI; needs a CSV/API pass',
+        before: `${curStreet}${curCity ? ', ' + curCity : ''}`, after: `${newStreet}${newCity ? ', ' + newCity : ''}`,
+      };
     }
     return {
       written: ok, skipped: false,

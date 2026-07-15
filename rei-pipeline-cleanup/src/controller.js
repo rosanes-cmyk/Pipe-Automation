@@ -185,8 +185,12 @@ class Controller {
       addressWritten = res.written;
       addressWriteDetail = res.detail;
       if (res.written) cleanedAddress = res.after || '';
-      if (!res.written && !res.skipped) addr.flags.push(`Address tidy not written: ${res.detail}`);
-      this.log(`[address] ${lead.address}: ${res.written ? `normalized -> ${res.after}` : (res.skipped ? `skipped (${res.detail})` : 'NOT written')} — ${res.detail}`);
+      if (res.reverted) addr.flags.push('Address not changeable in the UI — REI reverts it (contact/owner-linked). Needs a CSV/API pass.');
+      else if (!res.written && !res.skipped) addr.flags.push(`Address tidy not written: ${res.detail}`);
+      const word = res.written ? `normalized -> ${res.after}`
+        : res.reverted ? 'not changeable in UI (REI reverts it — contact-linked)'
+        : res.skipped ? `skipped (${res.detail})` : 'NOT written';
+      this.log(`[address] ${lead.address}: ${word} — ${res.detail}`);
     }
 
     const manualReason = geocoded ? 'Geocoded one-field address (,CA,USA) — cannot fix in UI; flag.'
