@@ -14,7 +14,7 @@ const { Reporter } = require('./reporter');
 const { classify } = require('./status-rules');
 const { reviewAddress, parseAddress } = require('./address');
 const { AddressWriter } = require('./address-writer');
-const { findDuplicates, normalizeAddress } = require('./duplicates');
+const { normalizeAddress } = require('./duplicates');
 
 function nowIso() { return new Date().toISOString(); }
 function readJson(p, fallback) { try { return JSON.parse(fs.readFileSync(path.resolve(p), 'utf8')); } catch { return fallback; } }
@@ -61,22 +61,6 @@ class Controller {
     try {
       await ensureLoggedIn(page, this.settings, this.log);
 
-      let leads;
-      if (this.settings.mode.TARGET_ID) {
-        const id = String(this.settings.mode.TARGET_ID);
-        leads = [{ id, address: `(id ${id})`, url: new URL(`/properties/details/${id}`, this.settings.urls.base).toString() }];
-        this.log(`Targeted run: single lead id=${id}`);
-      } else {
-        const pipeline = new Pipeline(page, this.selectors, this.settings, this.log);
-        await pipeline.open();
-        leads = await pipeline.listNewLeads();
-        this.log(`Found ${leads.length} New-bucket leads (processing from the top).`);
-      }
-
-      // Duplicate detection across the visible New set (flag-only).
-      const dupeGroups = findDuplicates(leads.map((l) => ({ propertyId: l.id, address: l.address })));
-      const dupeKeys = new Set(dupeGroups.map((g) => g.key));
-
       const property = new Property(page, this.settings, this.log);
       const contact = new Contact(page, this.settings, this.log);
       const activity = new Activity(page, this.settings, this.log);
@@ -85,26 +69,57 @@ class Controller {
       const notes = new Notes(page, this.settings, this.log);
       const addressWriter = new AddressWriter(page, this.settings, this.log);
 
+      // Incremental duplicate detection (flag-only): the 2nd+ time an address is
+      // seen this run, it's flagged as a possible duplicate.
+      const addrSeen = new Map();
       let processed = 0;
-      for (const lead of leads) {
-        if (this.stopRequested) { this.log('Stop requested — halting.'); break; }
-        if (processed >= MAX_LEADS_PER_RUN) { this.log(`Reached MAX_LEADS_PER_RUN (${MAX_LEADS_PER_RUN}).`); break; }
-        if (completed.has(lead.id)) continue;
 
+      const handle = async (lead) => {
+        if (this.stopRequested || processed >= MAX_LEADS_PER_RUN) return false;
+        if (completed.has(lead.id)) return false;
+        const key = normalizeAddress(lead.address);
+        const isDupe = addrSeen.has(key);
+        if (!isDupe) addrSeen.set(key, lead.id);
         try {
           await this._processLead({ lead, property, contact, activity, updater, notes, addressWriter, reporter,
-            dupeKeys, manualReview, duplicateQueue, LIVE_MODE, AUDIT_MODE, processed });
+            isDupe, manualReview, duplicateQueue, LIVE_MODE, AUDIT_MODE, processed });
         } catch (e) {
           this.log(`[error] ${lead.address} (${lead.id}): ${e.message}`);
           reporter.add({ property_address: lead.address, property_url: lead.url, manual_review_required: true,
             manual_review_reason: `error: ${e.message}`, processed_at: nowIso() });
         }
-
         completed.add(lead.id);
         writeJson(this.settings.paths.progress, { completed: [...completed], updatedAt: nowIso() });
         writeJson(this.settings.paths.manualReview, manualReview);
         writeJson(this.settings.paths.duplicates, duplicateQueue);
         processed++;
+        return true;
+      };
+
+      if (this.settings.mode.TARGET_ID) {
+        const id = String(this.settings.mode.TARGET_ID);
+        this.log(`Targeted run: single lead id=${id}`);
+        await handle({ id, address: `(id ${id})`, url: new URL(`/properties/details/${id}`, this.settings.urls.base).toString() });
+      } else {
+        // Process from the TOP as rows load — start on lead #1 right away
+        // instead of pre-scrolling the whole bucket.
+        const pipeline = new Pipeline(page, this.selectors, this.settings, this.log);
+        await pipeline.open();
+        this.log('Processing from the top as the list loads (no full pre-scroll).');
+        let cursor = 0, dryScrolls = 0;
+        while (!this.stopRequested && processed < MAX_LEADS_PER_RUN) {
+          const { leads, nextIndex } = await pipeline.leadsFrom(cursor);
+          cursor = nextIndex;
+          for (const lead of leads) {
+            if (this.stopRequested || processed >= MAX_LEADS_PER_RUN) break;
+            await handle(lead);
+          }
+          if (this.stopRequested || processed >= MAX_LEADS_PER_RUN) break;
+          const after = await pipeline.scrollOnce();   // load the next batch
+          if (after <= cursor) { if (++dryScrolls >= 3) break; } else dryScrolls = 0;
+        }
+        if (this.stopRequested) this.log('Stop requested — halting.');
+        else if (processed >= MAX_LEADS_PER_RUN) this.log(`Reached MAX_LEADS_PER_RUN (${MAX_LEADS_PER_RUN}).`);
       }
 
       reporter.flush();
@@ -122,7 +137,7 @@ class Controller {
   }
 
   async _processLead(ctx) {
-    const { lead, property, contact, activity, updater, notes, addressWriter, reporter, dupeKeys, manualReview, duplicateQueue, LIVE_MODE, AUDIT_MODE, processed } = ctx;
+    const { lead, property, contact, activity, updater, notes, addressWriter, reporter, isDupe, manualReview, duplicateQueue, LIVE_MODE, AUDIT_MODE, processed } = ctx;
 
     // 1. Skip the lead-sheet pre-read for speed — the decision doesn't need the
     //    current status, and the LIVE writer opens the lead sheet itself.
@@ -153,7 +168,6 @@ class Controller {
       this.settings.marketStatus
     );
 
-    const isDupe = dupeKeys.has(normalizeAddress(lead.address));
     const needsManual = decision.action === 'manual_review' || decision.action === 'hold' || isDupe || geocoded;
 
     // 6. Screenshots + write (LIVE only).

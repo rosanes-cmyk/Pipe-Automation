@@ -55,15 +55,12 @@ class Pipeline {
   }
 
   /**
-   * Return New-bucket leads in list order (top first), de-duplicated by id.
+   * Read the leads currently rendered in the list (top first), de-duplicated by
+   * id — WITHOUT scrolling. Used for incremental top-first processing so the
+   * bot starts on lead #1 right away instead of scrolling the whole bucket.
    * Each: { id, address, url }
    */
-  async listNewLeads() {
-    // Only scroll far enough to satisfy this run's MAX (with a small buffer for
-    // duplicates/non-New rows). A small --max test won't scroll the whole list.
-    const max = this.settings.mode.MAX_LEADS_PER_RUN;
-    const target = max && max > 0 ? max + 10 : Infinity;
-    await this.loadAllRows(target);
+  async currentLeads() {
     const links = this._addressLinks();
     const n = await links.count().catch(() => 0);
     const seen = new Set();
@@ -79,6 +76,45 @@ class Pipeline {
       leads.push({ id, address, url: this._abs(`/properties/details/${id}`) });
     }
     return leads;
+  }
+
+  /**
+   * Read leads from the given link index onward (only the newly-loaded rows),
+   * so incremental processing never re-scans the whole list. Returns
+   * { leads, nextIndex }. Caller de-dupes by id via its own "completed" set.
+   */
+  async leadsFrom(startIndex = 0) {
+    const links = this._addressLinks();
+    const n = await links.count().catch(() => 0);
+    const leads = [];
+    for (let i = startIndex; i < n; i++) {
+      const href = await links.nth(i).getAttribute('href').catch(() => '');
+      const m = href && href.match(/\/properties\/details\/(\d+)/);
+      if (!m) continue;
+      const id = m[1];
+      const address = ((await links.nth(i).innerText().catch(() => '')) || '').trim().replace(/\s+/g, ' ');
+      leads.push({ id, address, url: this._abs(`/properties/details/${id}`) });
+    }
+    return { leads, nextIndex: n };
+  }
+
+  /** One lazy-load scroll step. Returns the rendered row count afterwards. */
+  async scrollOnce() {
+    await this.page.evaluate(() => window.scrollTo(0, document.body.scrollHeight)).catch(() => {});
+    await this.page.mouse.wheel(0, 30000).catch(() => {});
+    await this.page.waitForTimeout(900);
+    return this._addressLinks().count().catch(() => 0);
+  }
+
+  /**
+   * Full-list load (top first), de-duplicated. Kept for callers that need the
+   * whole set up front; the controller now prefers incremental processing.
+   */
+  async listNewLeads() {
+    const max = this.settings.mode.MAX_LEADS_PER_RUN;
+    const target = max && max > 0 ? max + 10 : Infinity;
+    await this.loadAllRows(target);
+    return this.currentLeads();
   }
 
   _abs(pathname) {
