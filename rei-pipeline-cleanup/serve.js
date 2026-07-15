@@ -200,7 +200,7 @@ label.chk{display:flex;align-items:center;gap:7px;color:var(--ink-2);font-size:1
 
 <div class="modal-bg hide" id="modalbg" onclick="if(event.target===this)closeReport()">
   <div class="modal" id="report">
-    <div class="modaltop"><div><h2 id="rtitle">Daily Report</h2><div class="muted" id="rdate"></div></div>
+    <div class="modaltop"><div><h2 id="rtitle">Pipeline Status Cleanup — Daily Report</h2><div class="muted" id="rdate"></div></div>
       <div class="noprint"><button class="btn" onclick="savePDF()">🖨 Save as PDF</button><button class="btn ghost" onclick="closeReport()">✕ Close</button></div></div>
     <div id="rbody"></div>
   </div>
@@ -245,20 +245,16 @@ async function loadStats(){
   }catch(e){}
 }
 async function openReport(){
-  const [rows,daily]=await Promise.all([fetch('/api/latest').then(r=>r.json()),fetch('/api/daily').then(r=>r.json())]);
+  const rows=await fetch('/api/latest').then(r=>r.json());
   const c={total:rows.length,ev:0,cl:0,uc:0,mr:0,dup:0,new:0};
   rows.forEach(r=>{const s=r.recommended_status; if(s==='Evaluating')c.ev++; else if(s==='Closed')c.cl++; else if(s==='Under Contract')c.uc++; else c.new++; if(r.manual_review_required)c.mr++; if(r.possible_duplicate)c.dup++;});
   const today=new Date().toISOString().slice(0,10);
   document.getElementById('rdate').textContent='Twin Home Buyer · REI BlackBook · '+today;
   const explain='Today the automation reviewed <b>'+c.total+'</b> leads from the New pipeline. It set <b>'+c.ev+'</b> to <b>Follow up</b> and <b>'+c.cl+'</b> to <b>Dead</b> (both from the rep\\'s own Lead Stage), held <b>'+c.uc+'</b> Under-Contract lead(s) for a person, and flagged <b>'+c.mr+'</b>'+(c.dup?(' plus <b>'+c.dup+'</b> duplicate(s)'):'')+'. The remaining <b>'+c.new+'</b> had no contact/activity and were left as New. Every change is reversible; the State field was never touched.';
-  const attention=rows.filter(r=>r.recommended_status!=='New'||r.manual_review_required).slice(0,120);
-  const tbl=attention.length?('<table><thead><tr><th>Property</th><th>Decision</th><th>Why</th></tr></thead><tbody>'+attention.map(r=>'<tr><td>'+esc(r.property_address||'')+(r.contact_name?' — '+esc(r.contact_name):'')+'</td><td>'+esc(r.recommended_status)+'</td><td>'+esc(r.manual_review_reason||r.latest_activity_summary||'')+'</td></tr>').join('')+'</tbody></table>'):'<div class="muted">No leads needed changes today.</div>';
-  const days=(daily||[]).slice(-10).reverse();
-  const hist=days.length?('<h4>Recent daily runs</h4><table><thead><tr><th>Date</th><th>Mode</th><th>Reviewed</th><th>Follow up</th><th>Dead</th><th>Flagged</th></tr></thead><tbody>'+days.map(d=>'<tr><td>'+esc(d.date||'')+'</td><td>'+esc(d.mode||'')+'</td><td>'+(d.total||0)+'</td><td>'+(d.evaluating||0)+'</td><td>'+(d.closed||0)+'</td><td>'+(d.manualReview||0)+'</td></tr>').join('')+'</tbody></table>'):'';
   const kc=(k,v,col)=>'<div class="kcell"><div class="k">'+k+'</div><div class="kv"'+(col?' style="color:'+col+'"':'')+'>'+v+'</div></div>';
   document.getElementById('rbody').innerHTML='<div class="explain">'+explain+'</div><div class="krow">'+
     kc('Reviewed',c.total)+kc('Follow up',c.ev,'#16a34a')+kc('Dead',c.cl,'#dc2626')+kc('Under Contract',c.uc,'#7c3aed')+kc('Flagged',c.mr,'#b45309')+kc('Duplicates',c.dup,'#0891b2')+
-    '</div><h4>Leads that changed or need attention ('+attention.length+')</h4>'+tbl+hist;
+    '</div>';
   document.getElementById('modalbg').classList.remove('hide');
 }
 function closeReport(){ document.getElementById('modalbg').classList.add('hide'); }
