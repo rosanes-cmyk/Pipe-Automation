@@ -102,25 +102,19 @@ class Controller {
         this.log(`Targeted run: single lead id=${id}`);
         await handle({ id, address: `(id ${id})`, url: new URL(`/properties/details/${id}`, this.settings.urls.base).toString() });
       } else {
-        // Process from the TOP as rows load — start on lead #1 right away
-        // instead of pre-scrolling the whole bucket.
+        // Capture the WHOLE New list first (scroll the inbox once), THEN process
+        // top-to-bottom. We must enumerate the list before processing, because
+        // opening a lead navigates away from the inbox page — reading the list
+        // incrementally after that would only ever see the first screen.
         const pipeline = new Pipeline(page, this.selectors, this.settings, this.log);
         await pipeline.open();
-        this.log('Processing from the top as the list loads (no full pre-scroll).');
-        let cursor = 0, dryScrolls = 0;
-        while (!this.stopRequested && processed < MAX_LEADS_PER_RUN) {
-          const { leads, nextIndex } = await pipeline.leadsFrom(cursor);
-          cursor = nextIndex;
-          for (const lead of leads) {
-            if (this.stopRequested || processed >= MAX_LEADS_PER_RUN) break;
-            await handle(lead);
-          }
-          if (this.stopRequested || processed >= MAX_LEADS_PER_RUN) break;
-          const after = await pipeline.scrollOnce();   // load the next batch
-          if (after <= cursor) { if (++dryScrolls >= 3) break; } else dryScrolls = 0;
+        const leads = await pipeline.listNewLeads();
+        this.log(`Found ${leads.length} New-bucket leads — processing from the top.`);
+        for (const lead of leads) {
+          if (this.stopRequested) { this.log('Stop requested — halting.'); break; }
+          if (processed >= MAX_LEADS_PER_RUN) { this.log(`Reached MAX_LEADS_PER_RUN (${MAX_LEADS_PER_RUN}).`); break; }
+          await handle(lead);
         }
-        if (this.stopRequested) this.log('Stop requested — halting.');
-        else if (processed >= MAX_LEADS_PER_RUN) this.log(`Reached MAX_LEADS_PER_RUN (${MAX_LEADS_PER_RUN}).`);
       }
 
       reporter.flush();
