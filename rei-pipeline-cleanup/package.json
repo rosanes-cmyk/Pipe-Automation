@@ -1,6 +1,6 @@
 {
   "name": "rei-pipeline-cleanup",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "REI BlackBook Property Pipeline status cleanup automation (Node.js + Playwright)",
   "type": "commonjs",
   "main": "electron-main.js",

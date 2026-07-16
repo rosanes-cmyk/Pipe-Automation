@@ -61,13 +61,19 @@ class Controller {
     try {
       await ensureLoggedIn(page, this.settings, this.log);
 
-      const property = new Property(page, this.settings, this.log);
-      const contact = new Contact(page, this.settings, this.log);
-      const activity = new Activity(page, this.settings, this.log);
-      const updater = new Updater(page, property, this.settings, this.log);
+      // Two tabs: `page` keeps the pipeline LIST open; `workPage` does each
+      // lead's work (contact/status/notes/address). Because the list tab never
+      // navigates away, we can process the top leads immediately AND keep
+      // scrolling the list for more — no full pre-scroll, full coverage.
+      // Both tabs share the same logged-in session (same browser context).
+      const workPage = await context.newPage();
+      const property = new Property(workPage, this.settings, this.log);
+      const contact = new Contact(workPage, this.settings, this.log);
+      const activity = new Activity(workPage, this.settings, this.log);
+      const updater = new Updater(workPage, property, this.settings, this.log);
       const { Notes } = require('./notes');
-      const notes = new Notes(page, this.settings, this.log);
-      const addressWriter = new AddressWriter(page, this.settings, this.log);
+      const notes = new Notes(workPage, this.settings, this.log);
+      const addressWriter = new AddressWriter(workPage, this.settings, this.log);
 
       // Incremental duplicate detection (flag-only): the 2nd+ time an address is
       // seen this run, it's flagged as a possible duplicate.
@@ -102,19 +108,29 @@ class Controller {
         this.log(`Targeted run: single lead id=${id}`);
         await handle({ id, address: `(id ${id})`, url: new URL(`/properties/details/${id}`, this.settings.urls.base).toString() });
       } else {
-        // Capture the WHOLE New list first (scroll the inbox once), THEN process
-        // top-to-bottom. We must enumerate the list before processing, because
-        // opening a lead navigates away from the inbox page — reading the list
-        // incrementally after that would only ever see the first screen.
+        // Pipeline list lives in `page` (tab 1). Process the top rows right away
+        // in `workPage` (tab 2), then scroll tab 1 for the next batch and repeat.
+        // The list tab is never navigated away, so incremental loading works and
+        // there's no long pre-scroll before the first lead is handled.
         const pipeline = new Pipeline(page, this.selectors, this.settings, this.log);
         await pipeline.open();
-        const leads = await pipeline.listNewLeads();
-        this.log(`Found ${leads.length} New-bucket leads — processing from the top.`);
-        for (const lead of leads) {
-          if (this.stopRequested) { this.log('Stop requested — halting.'); break; }
-          if (processed >= MAX_LEADS_PER_RUN) { this.log(`Reached MAX_LEADS_PER_RUN (${MAX_LEADS_PER_RUN}).`); break; }
-          await handle(lead);
+        this.log('Processing from the top; the list stays open in a second tab and loads more as we go.');
+        let cursor = 0, dryScrolls = 0, everSaw = false;
+        while (!this.stopRequested && processed < MAX_LEADS_PER_RUN) {
+          const { leads, nextIndex } = await pipeline.leadsFrom(cursor);
+          cursor = nextIndex;
+          if (leads.length) everSaw = true;
+          for (const lead of leads) {
+            if (this.stopRequested || processed >= MAX_LEADS_PER_RUN) break;
+            await handle(lead); // runs in workPage — the list tab is untouched
+          }
+          if (this.stopRequested || processed >= MAX_LEADS_PER_RUN) break;
+          const after = await pipeline.scrollOnce(); // scroll the list tab for more rows
+          if (after <= cursor) { if (++dryScrolls >= 4) break; } else dryScrolls = 0;
         }
+        if (this.stopRequested) this.log('Stop requested — halting.');
+        else if (processed >= MAX_LEADS_PER_RUN) this.log(`Reached MAX_LEADS_PER_RUN (${MAX_LEADS_PER_RUN}).`);
+        else if (!everSaw) this.log('No New-bucket leads found.');
       }
 
       reporter.flush();
