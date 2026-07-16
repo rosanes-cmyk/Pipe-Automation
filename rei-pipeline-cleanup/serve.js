@@ -221,7 +221,7 @@ label.chk{display:flex;align-items:center;gap:7px;color:var(--ink-2);font-size:1
   </div>
 </div>
 <script>
-let live=false, wasRunning=false, ROWS=[], pollTick=0;
+let live=false, wasRunning=false, ROWS=[], pollTick=0, curCat=null;
 // Elapsed-time clock: track the current/last run's start & finish.
 var clk={start:null, finish:null, running:false};
 function fmtDur(ms){if(ms<0)ms=0;var s=Math.floor(ms/1000);var h=Math.floor(s/3600);var m=Math.floor((s%3600)/60);var ss=s%60;var p=function(n){return(n<10?'0':'')+n;};return p(h)+':'+p(m)+':'+p(ss);}
@@ -246,17 +246,19 @@ async function startRun(resume){
 async function stopRun(){ await fetch('/api/stop',{method:'POST'}); }
 const CATS={all:'All reviewed',nw:'Left as New (untouched)',ev:'Evaluating',cl:'Closed',uc:'Under Contract',mr:'Flagged',dup:'Duplicates'};
 function catMatch(cat,r){return cat==='all'?true:cat==='nw'?(r.recommended_status==='New'&&!r.manual_review_required&&!r.possible_duplicate):cat==='ev'?r.recommended_status==='Evaluating':cat==='cl'?r.recommended_status==='Closed':cat==='uc'?r.recommended_status==='Under Contract':cat==='mr'?!!r.manual_review_required:cat==='dup'?!!r.possible_duplicate:false;}
-function showCat(cat){
+function closeDetail(){ curCat=null; document.getElementById('detail').classList.add('hide'); }
+function showCat(cat,scroll){
+  curCat=cat;
   const list=ROWS.filter(r=>catMatch(cat,r));
   const d=document.getElementById('detail'); d.classList.remove('hide');
-  d.innerHTML='<span class="close" onclick="document.getElementById(\\'detail\\').classList.add(\\'hide\\')">✕ close</span>'+
+  d.innerHTML='<span class="close" onclick="closeDetail()">✕ close</span>'+
     '<h3>'+CATS[cat]+' ('+list.length+')</h3><div class="hint">Click an address to open the lead in REI BlackBook.</div>'+
     (list.length?'<div class="leadlist">'+list.map(r=>{const url=r.property_url||'https://my.reiblackbook.com/properties/inbox';const st=r.recommended_status||'New';
       return '<div class="lead"><div class="top"><a class="addr" href="'+esc(url)+'" target="_blank">'+esc(r.property_address||'(no address)')+'</a>'+
         '<span class="st '+stClass(st)+'">'+esc(st)+'</span>'+(r.contact_name?'<span class="cont">'+esc(r.contact_name)+'</span>':'')+
         '<a class="open" href="'+esc(url)+'" target="_blank">↗ Open in REI</a></div><div class="why">'+esc(r.manual_review_reason||r.latest_activity_summary||r.latest_activity_type||'')+'</div></div>';
     }).join('')+'</div>':'<div class="why" style="padding:8px 0">No leads in this category.</div>');
-  d.scrollIntoView({behavior:'smooth',block:'nearest'});
+  if(scroll!==false) d.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 async function loadStats(){
   try{
@@ -266,6 +268,7 @@ async function loadStats(){
     document.getElementById('firstrun').classList.toggle('hide', ROWS.length>0);
     const cards=[['TOTAL REVIEWED',c.total,'n-white','','all'],['LEFT AS NEW',c.nw,'n-slate','','nw'],['EVALUATING',c.ev,'n-green','','ev'],['UNDER CONTRACT',c.uc,'n-purple','','uc'],['CLOSED',c.cl,'n-red','','cl'],['FLAGGED',c.mr,'n-amber','','mr'],['DUPLICATES',c.dup,'n-cyan','hl','dup']];
     document.getElementById('stats').innerHTML=cards.map(x=>'<div class="stat '+x[3]+'" onclick="showCat(\\''+x[4]+'\\')"><div class="num '+x[2]+'">'+x[1]+'</div><div class="lab">'+x[0]+'</div></div>').join('');
+    if(curCat) showCat(curCat,false); // keep an open detail panel in sync with the live cards
   }catch(e){}
 }
 async function openReport(){
